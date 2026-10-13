@@ -14,8 +14,10 @@ import { RepairsPage } from './pages/RepairsPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { StyleGuidePage } from './pages/StyleGuidePage';
 import './styles/layout.css';
 import './styles/components.css';
+import './styles/login.css';
 
 export default function App() {
   return (
@@ -37,6 +39,7 @@ export default function App() {
           >
             <Route index element={<DashboardPage />} />
             <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="style-guide" element={<StyleGuidePage />} />
             <Route path="employees" element={<EmployeesPage />} />
             <Route path="systems" element={<ConnectedSystemsPage />} />
             <Route path="rules" element={<RulesPage />} />

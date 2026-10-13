@@ -1,40 +1,88 @@
-import React from 'react';
-import { Settings, Shield, Sliders, Bell, Database, Lock, Save } from 'lucide-react';
+import React, { useState } from 'react';
+import { Save, Check } from 'lucide-react';
+import { Button } from '../components/ui/Button';
+import { StatusPill } from '../components/ui/StatusPill';
 
 export function SettingsPage() {
+  const [scanFrequency, setScanFrequency] = useState(() => {
+    return localStorage.getItem('reconcileos_scan_frequency') || '5';
+  });
+  const [autoRepairPolicy, setAutoRepairPolicy] = useState(() => {
+    return localStorage.getItem('reconcileos_auto_repair_policy') || 'SEMI_AUTO';
+  });
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const handleSave = () => {
+    try {
+      localStorage.setItem('reconcileos_scan_frequency', scanFrequency);
+      localStorage.setItem('reconcileos_auto_repair_policy', autoRepairPolicy);
+      setToastMessage('Platform governance settings saved locally.');
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch {
+      setToastMessage('Failed to save settings to localStorage.');
+      setTimeout(() => setToastMessage(null), 3000);
+    }
+  };
+
   return (
-    <div>
+    <div className="page-content">
+      {/* Toast */}
+      {toastMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            backgroundColor: 'var(--accent-primary)',
+            color: '#FFFFFF',
+            padding: '12px 20px',
+            borderRadius: 'var(--radius-btn)',
+            boxShadow: 'var(--shadow-floating)',
+            zIndex: 1000,
+            fontSize: '14px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <Check size={16} />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       <div className="page-header">
         <div>
           <h1 className="page-title">
-            <Settings size={24} style={{ color: 'var(--accent-blue)' }} />
-            Platform & Governance Settings
+            <span>Settings</span>
           </h1>
           <p className="page-subtitle">
-            Configure integrity audit intervals, self-healing automation, and notification webhooks
+            Configure integrity audit frequency, self-healing automation, and API endpoints
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => alert('Settings saved successfully (Mock)!')}>
-          <Save size={14} /> Save Configuration
-        </button>
+        <Button variant="primary" icon={Save} onClick={handleSave}>
+          Save Configuration
+        </Button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        {/* Audit Schedule & Automation */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Engine schedule */}
         <div className="card">
-          <div className="card-title">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Sliders size={18} style={{ color: 'var(--accent-cyan)' }} />
-              <span>Reconciliation Engine Schedule</span>
-            </div>
-          </div>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px' }}>
+            Reconciliation Engine Schedule
+          </h3>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                Continuous Scan Frequency (minutes)
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                Scan Frequency
               </label>
-              <select className="search-input" style={{ width: '100%', paddingLeft: '12px' }} defaultValue="5">
+              <select
+                className="input-base"
+                style={{ width: '100%' }}
+                value={scanFrequency}
+                onChange={(e) => setScanFrequency(e.target.value)}
+              >
                 <option value="1">Every 1 minute (Aggressive)</option>
                 <option value="5">Every 5 minutes (Recommended)</option>
                 <option value="15">Every 15 minutes</option>
@@ -43,70 +91,66 @@ export function SettingsPage() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                Auto-Repair Threshold Policy
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                Auto-Repair Policy
               </label>
-              <select className="search-input" style={{ width: '100%', paddingLeft: '12px' }} defaultValue="SEMI_AUTO">
+              <select
+                className="input-base"
+                style={{ width: '100%' }}
+                value={autoRepairPolicy}
+                onChange={(e) => setAutoRepairPolicy(e.target.value)}
+              >
                 <option value="STRICT">Strict Approval (Human review for ALL repairs)</option>
-                <option value="SEMI_AUTO">Semi-Automated (Auto-repair LOW/MED risk; Approval for CRITICAL/HIGH)</option>
+                <option value="SEMI_AUTO">Semi-Automated (Auto-repair LOW/MED; Approval for CRITICAL/HIGH)</option>
                 <option value="FULL_AUTO">Full Self-Healing (Automate ALL verified drift repairs)</option>
               </select>
             </div>
           </div>
         </div>
 
-        {/* Backend Endpoint Settings */}
+        {/* API connection */}
         <div className="card">
-          <div className="card-title">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Database size={18} style={{ color: 'var(--status-success)' }} />
-              <span>Django REST API Connection (Future Milestone Binding)</span>
-            </div>
-          </div>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px' }}>
+            Django REST API Binding
+          </h3>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                Django REST Base URL
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                API Base Endpoint
               </label>
               <input
                 type="text"
-                className="search-input mono"
-                style={{ paddingLeft: '12px' }}
+                className="input-base font-mono"
+                style={{ width: '100%' }}
                 defaultValue="http://127.0.0.1:8000/api/v1/"
                 readOnly
               />
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                API Health Endpoint Status
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                Health Check Status
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', height: '36px' }}>
-                <span className="pulse-dot healthy"></span>
-                <span className="mono" style={{ fontSize: '0.85rem', color: 'var(--status-success)' }}>
-                  http://127.0.0.1:8000/api/v1/health/ (200 OK)
-                </span>
+                <StatusPill status="healthy" label="200 OK — Operational" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Security & Audit Retention */}
+        {/* Security Policy */}
         <div className="card">
-          <div className="card-title">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Lock size={18} style={{ color: 'var(--status-warning)' }} />
-              <span>Audit Log Retention & Security</span>
-            </div>
-          </div>
-
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-            ReconcileOS audit logs are tamper-evident and recorded with cryptographic hashes.
-            Log retention is configured for <strong>365 days</strong> with immutable event stream protection.
-          </div>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+            Audit Log Retention Policy
+          </h3>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+            ReconcileOS audit logs are recorded with cryptographic SHA-256 hash chains.
+            Log retention policy is set to <strong>365 days</strong> with immutable event stream protection.
+          </p>
         </div>
       </div>
     </div>
   );
 }
+

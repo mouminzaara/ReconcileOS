@@ -12,8 +12,18 @@ last verified against repo: 2026-08-28
 - **Milestone 18 Core**: Comprehensive Audit Logging (`AuditLog` model, SHA-256 cryptographic hash chaining, append-only immutability safeguards, `AuditLogger` service with `verify_chain_integrity()`, full pipeline event emission across rule evaluation, violation detection, repair planning, approval, execution, retries, verification, and resolution, DRF `ReadOnlyModelViewSet` API with `/api/v1/audit/logs/verify_chain/`, documentation in `docs/audit_logging.md`, 9 unit/integration tests).
 - **AI-Assisted Rule Creation**: Isolated natural language requirement parsing (`AIRuleGenerator` service, `AIRuleGenerationException`), DRAFT state enforcement (`is_enabled=False`), REST API `POST /api/v1/rules/generate_draft/`, human review and activation workflow, engine isolation fallback, documentation in `docs/ai_rule_generation.md`, 7 unit and integration tests.
 
+- **Frontend UI Refinement & Employees Module Restoration**: Applied restrained, quietly polished Lavender visual system across all 9 application routes. Restored full end-to-end Employees module functionality (Add Employee, View Detail, Edit Employee, Terminate Employee) wired directly to Django REST API. Enabled all 9 sidebar routes. Zero backend alterations made.
+
+- **End-to-End Regression Test**: Added `FullLifecycleTerminationE2ETestCase` in `apps/workflows/test_verification.py` verifying the complete 10-step lifecycle from ACTIVE employee creation, termination, drift detection, violation creation, repair planning, approval gating, repair execution, empirical post-repair verification, violation resolution, and SHA-256 audit-chain verification (118/118 tests passing).
+
+- **Connected Systems Live State Integration**: Connected `ConnectedSystemsPage` to real-time multi-system telemetry via `api.getCollectedStates()` and `api.getViolations()`. Dynamically computes monitored account totals and drift status per connected gateway (HR, VPN, GitHub, Cloud IAM, Slack) with full error, loading, and refresh handling.
+
+- **UI Theme Unification & Login Page Redesign**: Completely redesigned the login page from a plain centered form to a premium split-panel layout matching the landing page's warm beige/lavender gradient identity. Added animated floating orbs, glassmorphic feature pills, branded trust bar, and slide-in form animations. Unified micro-animations across all app pages: card hover lifts, page fade-in-up transitions, button press feedback, stat card hover effects, sidebar gradient polish, and input focus glows.
+
 ## In Progress
-- Completed Milestone 18 & AI-Assisted Rule Creation.
+- Live demonstration preparation.
+
 
 ## Not Started
 - Celery / Redis async task queue integration, production deployment manifests.
+

@@ -72,7 +72,7 @@ class ContinuousMonitor:
             eval_results = [self.engine.evaluate_employee_rules(employee_id)]
             employees_evaluated_count = 1
         else:
-            eval_results = self.engine.evaluate_all_rules()
+            eval_results = self.engine.evaluate_all()
             employees_evaluated_count = Employee.objects.count()
 
         # Query all active OPEN violations

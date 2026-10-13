@@ -1,39 +1,26 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Users,
   AlertTriangle,
   Wrench,
-  CheckCircle2,
   Server,
-  Shield,
-  GitBranch,
-  Cloud,
-  MessageSquare,
-  ArrowRight,
-  ExternalLink,
   RefreshCw,
-  Play
+  Play,
+  ArrowRight,
+  Activity,
+  ShieldAlert
 } from 'lucide-react';
-import { StatCard } from '../components/common/StatCard';
-import { StatusBadge } from '../components/common/StatusBadge';
-import { SeverityBadge } from '../components/common/SeverityBadge';
-import { LifecycleStepper } from '../components/common/LifecycleStepper';
-import { IntegrityDriftCard } from '../components/common/IntegrityDriftCard';
+import { StatCard } from '../components/ui/StatCard';
+import { StatusPill } from '../components/ui/StatusPill';
+import { Button } from '../components/ui/Button';
+import { ActivityRow } from '../components/ui/ActivityRow';
 import { api } from '../services/api';
 import {
   mockStats,
   mockConnectedSystems,
   mockViolations
 } from '../data/mockData';
-import { Link } from 'react-router-dom';
-
-const systemIconMap = {
-  Users: Users,
-  ShieldAlert: Shield,
-  GitBranch: GitBranch,
-  Cloud: Cloud,
-  MessageSquare: MessageSquare
-};
 
 export function DashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -41,28 +28,32 @@ export function DashboardPage() {
   const [stats, setStats] = useState(mockStats);
   const [violations, setViolations] = useState(mockViolations);
   const [systems, setSystems] = useState(mockConnectedSystems);
+  const [activityLogs, setActivityLogs] = useState([]);
   const [lastScanTime, setLastScanTime] = useState('Just now');
   const [message, setMessage] = useState(null);
 
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [empRes, vioRes, plansRes, stateRes, pendingRes] = await Promise.allSettled([
+      const [empRes, vioRes, plansRes, stateRes, pendingRes, auditRes] = await Promise.allSettled([
         api.getEmployees(),
         api.getViolations(),
         api.getRepairPlans(),
         api.getCollectedStates(),
-        api.getPendingApprovals()
+        api.getPendingApprovals(),
+        api.getAuditLogs()
       ]);
 
       const employeesList = empRes.status === 'fulfilled' ? (empRes.value.results || empRes.value) : [];
       const violationsList = vioRes.status === 'fulfilled' ? (vioRes.value.results || vioRes.value) : [];
       const plansList = plansRes.status === 'fulfilled' ? (plansRes.value.results || plansRes.value) : [];
       const pendingList = pendingRes.status === 'fulfilled' ? (pendingRes.value.results || pendingRes.value) : [];
+      const rawAuditLogs = auditRes.status === 'fulfilled' ? (auditRes.value.results || auditRes.value) : [];
+      const collectedStates = stateRes.status === 'fulfilled' ? (stateRes.value.results || stateRes.value) : [];
 
-      if (violationsList.length > 0) {
+      if (Array.isArray(violationsList) && violationsList.length > 0) {
         const formattedViolations = violationsList.map(v => ({
-          id: v.id ? strShortId(v.id) : v.rule_code,
+          id: v.id ? `VIO-${v.id.substring(0, 8).toUpperCase()}` : v.rule_code,
           fullId: v.id,
           employeeName: v.employee_name || (v.employee && v.employee.full_name) || 'Rahul Kumar',
           employeeEmail: v.employee_email || (v.employee && v.employee.email) || 'rahul.kumar@reconcileos.internal',
@@ -79,13 +70,60 @@ export function DashboardPage() {
         setViolations(formattedViolations);
       }
 
-      const activeViolationsCount = violationsList.filter(v => v.status === 'OPEN').length;
-      const completedPlansCount = plansList.filter(p => p.status === 'COMPLETED' || p.status === 'SUCCESS').length;
+      if (Array.isArray(rawAuditLogs) && rawAuditLogs.length > 0) {
+        const formattedLogs = rawAuditLogs.slice(0, 5).map(log => ({
+          id: log.id ? `AUD-${String(log.id).substring(0, 8).toUpperCase()}` : (log.correlation_id || 'AUD-0000'),
+          eventType: log.event_type || 'EVENT',
+          target: log.employee_name || log.employee_email || log.action || 'Directory Resource',
+          timestamp: log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : 'Just now',
+          status: log.result || 'SUCCESS'
+        }));
+        setActivityLogs(formattedLogs);
+      } else {
+        setActivityLogs([]);
+      }
+
+      if (Array.isArray(collectedStates) && collectedStates.length > 0) {
+        const activeSystemsMap = {
+          HR: { active: collectedStates.length, hasDrift: false },
+          VPN: { active: 0, hasDrift: false },
+          GitHub: { active: 0, hasDrift: false },
+          Cloud: { active: 0, hasDrift: false },
+          Slack: { active: 0, hasDrift: false }
+        };
+
+        collectedStates.forEach(st => {
+          const sys = st.systems || {};
+          if (sys.vpn?.access_status === 'ENABLED') activeSystemsMap.VPN.active += 1;
+          if (sys.github?.access_status === 'ACTIVE' || sys.github?.access_status === 'MEMBER') activeSystemsMap.GitHub.active += 1;
+          if (sys.cloud?.access_status && sys.cloud?.access_status !== 'NO_ROLE' && sys.cloud?.access_status !== 'NOT_PROVISIONED') activeSystemsMap.Cloud.active += 1;
+          if (sys.slack?.access_status === 'ACTIVE') activeSystemsMap.Slack.active += 1;
+        });
+
+        violationsList.filter(v => v.status === 'OPEN').forEach(v => {
+          const key = (v.affected_system || '').toUpperCase();
+          if (activeSystemsMap[key]) {
+            activeSystemsMap[key].hasDrift = true;
+          }
+        });
+
+        const nowStr = new Date().toLocaleTimeString();
+        setSystems([
+          { id: 'sys-1', name: 'BambooHR Gateway', type: 'HR System of Record', protocol: 'REST / OAuth2', status: 'HEALTHY', activeAccounts: activeSystemsMap.HR.active, latency: '12ms', lastChecked: nowStr },
+          { id: 'sys-2', name: 'OpenVPN Gateway', type: 'Network Access Control', protocol: 'OpenVPN Management API', status: activeSystemsMap.VPN.hasDrift ? 'DRIFT_DETECTED' : 'HEALTHY', activeAccounts: activeSystemsMap.VPN.active, latency: '45ms', lastChecked: nowStr },
+          { id: 'sys-3', name: 'GitHub Enterprise', type: 'Source Code & Organization', protocol: 'GitHub REST v3 / GraphQL', status: activeSystemsMap.GitHub.hasDrift ? 'DRIFT_DETECTED' : 'HEALTHY', activeAccounts: activeSystemsMap.GitHub.active, latency: '88ms', lastChecked: nowStr },
+          { id: 'sys-4', name: 'AWS Cloud IAM', type: 'Cloud Infrastructure & Roles', protocol: 'AWS Security Token Service', status: activeSystemsMap.Cloud.hasDrift ? 'DRIFT_DETECTED' : 'HEALTHY', activeAccounts: activeSystemsMap.Cloud.active, latency: '120ms', lastChecked: nowStr },
+          { id: 'sys-5', name: 'Slack Workspace', type: 'Corporate Chat & Provisioning', protocol: 'Slack SCIM API v2', status: activeSystemsMap.Slack.hasDrift ? 'DRIFT_DETECTED' : 'HEALTHY', activeAccounts: activeSystemsMap.Slack.active, latency: '34ms', lastChecked: nowStr }
+        ]);
+      }
+
+      const activeViolationsCount = Array.isArray(violationsList) ? violationsList.filter(v => v.status === 'OPEN').length : 0;
+      const completedPlansCount = Array.isArray(plansList) ? plansList.filter(p => p.status === 'COMPLETED' || p.status === 'SUCCESS').length : 0;
 
       setStats({
-        totalEmployees: employeesList.length || mockStats.totalEmployees,
+        totalEmployees: Array.isArray(employeesList) ? employeesList.length : mockStats.totalEmployees,
         activeViolations: activeViolationsCount,
-        pendingRepairs: pendingList.length,
+        pendingRepairs: Array.isArray(pendingList) ? pendingList.length : mockStats.pendingRepairs,
         successfulReconciliations: completedPlansCount,
         systemHealthPercent: activeViolationsCount === 0 ? 100 : Math.max(60, 100 - activeViolationsCount * 10),
         lastScanTimestamp: new Date().toLocaleTimeString()
@@ -93,7 +131,7 @@ export function DashboardPage() {
 
       setLastScanTime(new Date().toLocaleTimeString());
     } catch (err) {
-      console.warn('Backend API connection failed, falling back to cached mock telemetry:', err);
+      console.warn('Backend API connection failed, using fallback metrics:', err);
     } finally {
       setLoading(false);
     }
@@ -103,17 +141,12 @@ export function DashboardPage() {
     loadDashboardData();
   }, []);
 
-  function strShortId(id) {
-    if (!id) return 'VIO-000';
-    return `VIO-${id.substring(0, 8).toUpperCase()}`;
-  }
-
   const handleRunReconciliation = async () => {
     setActionLoading(true);
     setMessage(null);
     try {
       const res = await api.runReconciliation();
-      setMessage({ type: 'success', text: res.message || 'Reconciliation audit completed successfully!' });
+      setMessage({ type: 'success', text: res.message || 'Reconciliation audit completed successfully.' });
       await loadDashboardData();
     } catch (err) {
       setMessage({ type: 'error', text: `Reconciliation audit error: ${err.message}` });
@@ -129,236 +162,217 @@ export function DashboardPage() {
       const res = await api.runContinuousMonitor(true);
       setMessage({
         type: 'success',
-        text: `Continuous Integrity Monitor cycle completed! Status: ${res.system_status}, Repairs Executed: ${res.repairs_executed_count}`
+        text: `Continuous Integrity Monitor cycle completed. Status: ${res.system_status || 'HEALTHY'}, Repairs: ${res.repairs_executed_count || 0}`
       });
       await loadDashboardData();
     } catch (err) {
-      setMessage({ type: 'error', text: `Monitoring cycle error: ${err.message}` });
+      setMessage({ type: 'error', text: `Monitoring error: ${err.message}` });
     } finally {
       setActionLoading(false);
     }
   };
 
+  const activeViolation = violations.find(v => v.severity === 'CRITICAL' || v.status === 'ACTIVE' || v.status === 'OPEN') || violations[0];
+
   return (
-    <div>
+    <div className="page-content">
       {/* Page Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">
-            <Shield size={24} style={{ color: 'var(--accent-blue)' }} />
-            Security & Invariant Dashboard
+            <span>ReconcileOS Dashboard</span>
           </h1>
           <p className="page-subtitle">
-            Continuous identity reconciliation and multi-system self-healing platform
+            Continuous authorization drift detection and automated self-healing
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Last Scan: {lastScanTime}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginRight: '4px' }} className="font-mono">
+            Last scan: {lastScanTime}
           </span>
-          <button
-            className="btn btn-secondary"
-            onClick={handleRunReconciliation}
-            disabled={actionLoading}
-          >
-            <RefreshCw size={14} className={actionLoading ? 'spin' : ''} />
+          <Button variant="secondary" icon={RefreshCw} onClick={handleRunReconciliation} disabled={actionLoading}>
             Audit Drift
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={handleRunContinuousMonitor}
-            disabled={actionLoading}
-          >
-            <Play size={14} />
-            Run Self-Healing Monitor
-          </button>
+          </Button>
+          <Button variant="primary" icon={Play} onClick={handleRunContinuousMonitor} disabled={actionLoading}>
+            Run Self-Healing
+          </Button>
         </div>
       </div>
 
-      {/* Message Banner */}
+      {/* Feedback Banner */}
       {message && (
         <div
-          className="card"
           style={{
             marginBottom: '20px',
-            borderColor: message.type === 'success' ? 'var(--status-success)' : 'var(--status-danger)',
-            backgroundColor: message.type === 'success' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
             padding: '12px 16px',
-            fontSize: '0.85rem'
+            borderRadius: 'var(--radius-btn)',
+            backgroundColor: message.type === 'success' ? 'var(--status-healthy-bg)' : 'var(--status-critical-bg)',
+            border: `1px solid ${message.type === 'success' ? 'var(--status-healthy-border)' : 'var(--status-critical-border)'}`,
+            color: message.type === 'success' ? 'var(--status-healthy)' : 'var(--status-critical)',
+            fontSize: '13px',
+            fontWeight: 600
           }}
         >
           {message.text}
         </div>
       )}
 
-      {/* Integrity & Authorization Drift Showcase Card */}
-      <IntegrityDriftCard
-        onRunAudit={handleRunReconciliation}
-        onRunMonitor={handleRunContinuousMonitor}
-        actionLoading={actionLoading}
-      />
-
-      {/* Metric Cards */}
+      {/* Restrained Summary Metrics */}
       <div className="grid-4">
         <StatCard
-          title="Total Employees"
-          value={stats.totalEmployees}
-          subtext="Identity records monitored"
-          icon={Users}
-          variant="info"
-        />
-        <StatCard
-          title="Active Integrity Violations"
+          title="Active Violations"
           value={stats.activeViolations}
-          subtext="Authorization drifts detected"
+          status="critical"
+          statusLabel="Drift Detected"
           icon={AlertTriangle}
-          variant="danger"
         />
         <StatCard
-          title="Pending Repairs"
+          title="Pending Approvals"
           value={stats.pendingRepairs}
-          subtext="Awaiting human approval"
+          status="warning"
+          statusLabel="Action Required"
           icon={Wrench}
-          variant="warning"
         />
         <StatCard
-          title="Successful Reconciliations"
-          value={stats.successfulReconciliations}
-          subtext="100% empirically verified"
-          icon={CheckCircle2}
-          variant="success"
+          title="Systems Healthy"
+          value={`${systems.filter(s => s.status === 'HEALTHY').length} / ${systems.length}`}
+          status="healthy"
+          statusLabel="Verified"
+          icon={Server}
+        />
+        <StatCard
+          title="Monitored Employees"
+          value={stats.totalEmployees}
+          status="neutral"
+          statusLabel="HR Directory"
+          icon={Users}
         />
       </div>
 
-      {/* Visual Reconciliation Lifecycle Stepper */}
-      <LifecycleStepper />
-
-      {/* Connected System Health Grid */}
-      <div className="card" style={{ marginBottom: '28px' }}>
-        <div className="card-title">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Server size={18} style={{ color: 'var(--accent-cyan)' }} />
-            <span>Connected Systems Health</span>
-          </div>
-          <Link to="/systems" style={{ fontSize: '0.8rem', color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            View All Connectors <ArrowRight size={14} />
-          </Link>
-        </div>
-
-        <div className="grid-3" style={{ marginBottom: 0 }}>
-          {systems.map((sys) => {
-            const Icon = systemIconMap[sys.icon] || Server;
-            const isDrift = sys.status === 'DRIFT_DETECTED';
-            return (
-              <div key={sys.id} className="card system-card">
-                <div>
-                  <div className="system-card-header">
-                    <div className="system-info">
-                      <div className="system-icon">
-                        <Icon size={20} />
-                      </div>
-                      <div>
-                        <div className="system-title">{sys.name}</div>
-                        <div className="system-type">{sys.type}</div>
-                      </div>
-                    </div>
-                    <span className={`pulse-dot ${isDrift ? 'drift' : 'healthy'}`}></span>
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                    {sys.description}
-                  </div>
-                </div>
-
-                <div className="system-details">
-                  <div className="detail-row">
-                    <span className="detail-label">Status</span>
-                    <StatusBadge status={sys.status} />
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Protocol</span>
-                    <span className="mono detail-val">{sys.protocol}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Latency</span>
-                    <span className="detail-val">{sys.latency}</span>
-                  </div>
-                </div>
+      {/* Attention Required Panel */}
+      {activeViolation && (
+        <div
+          style={{
+            marginBottom: '24px',
+            padding: '16px 20px',
+            borderRadius: 'var(--radius-card)',
+            backgroundColor: 'var(--status-critical-bg)',
+            border: '1px solid var(--status-critical-border)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: 'var(--radius-btn)',
+                backgroundColor: 'var(--status-critical)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FFFFFF'
+              }}
+            >
+              <ShieldAlert size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--status-critical)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Attention Required — Critical Authorization Drift
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Active Violations Section */}
-      <div className="card">
-        <div className="card-title">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <AlertTriangle size={18} style={{ color: 'var(--status-danger)' }} />
-            <span>Recent Invariant Violations (Authorization Drift)</span>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
+                {activeViolation.employeeName} ({activeViolation.employeeEmail}) HR status is <strong>{activeViolation.hrStatus}</strong>, but <strong>{activeViolation.systemKey}</strong> access remains <strong>{activeViolation.actualState}</strong>.
+              </div>
+            </div>
           </div>
-          <Link to="/violations" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
-            View Full Matrix
+
+          <Link to="/approvals">
+            <Button variant="danger" size="small" icon={ArrowRight}>
+              Review Repair Action
+            </Button>
           </Link>
         </div>
+      )}
 
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Violation ID</th>
-                <th>Employee</th>
-                <th>HR State</th>
-                <th>Target System</th>
-                <th>Expected</th>
-                <th>Actual</th>
-                <th>Severity</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {violations.map((vio) => (
-                <tr key={vio.id}>
-                  <td className="mono" style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>
-                    {vio.id}
-                  </td>
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{vio.employeeName}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{vio.employeeEmail}</div>
-                  </td>
-                  <td>
-                    <StatusBadge status={vio.hrStatus} />
-                  </td>
-                  <td>
-                    <span className="badge badge-info">{vio.systemKey}</span>
-                  </td>
-                  <td>
-                    <span className="mono" style={{ color: 'var(--status-success)', fontWeight: 600 }}>
-                      {vio.expectedState}
-                    </span>
-                  </td>
-                  <td>
-                    <span className="mono" style={{ color: 'var(--status-danger)', fontWeight: 600 }}>
-                      {vio.actualState}
-                    </span>
-                  </td>
-                  <td>
-                    <SeverityBadge severity={vio.severity} />
-                  </td>
-                  <td>
-                    <StatusBadge status={vio.status} />
-                  </td>
-                  <td>
-                    <Link to="/approvals" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '4px 8px' }}>
-                      Review <ExternalLink size={12} />
-                    </Link>
-                  </td>
+      {/* Grid: System Health Table + Recent Activity */}
+      <div className="grid-2" style={{ marginBottom: '24px' }}>
+        {/* System Health List */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>System Connectors</h2>
+            <Link to="/systems" style={{ fontSize: '12px', color: 'var(--accent-primary)', fontWeight: 600 }}>
+              View Connectors →
+            </Link>
+          </div>
+
+          <div className="plain-divided-container">
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ backgroundColor: 'var(--bg-base)', borderBottom: '1px solid var(--border-hairline)' }}>
+                  <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase' }}>System</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase' }}>Last Checked</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {systems.map((sys) => {
+                  const isDrift = sys.status === 'DRIFT_DETECTED';
+                  return (
+                    <tr key={sys.id} style={{ borderBottom: '1px solid var(--border-hairline)' }}>
+                      <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {sys.name}
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 400 }}>{sys.type}</div>
+                      </td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <StatusPill status={isDrift ? 'warning' : 'healthy'} label={isDrift ? 'Drift Detected' : 'Healthy'} size="small" />
+                      </td>
+                      <td className="font-mono" style={{ padding: '12px 14px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                        {sys.lastChecked}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Recent Activity Log Feed */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>Recent Activity</h2>
+            <Link to="/audit-logs" style={{ fontSize: '12px', color: 'var(--accent-primary)', fontWeight: 600 }}>
+              View Audit Logs →
+            </Link>
+          </div>
+
+          <div className="plain-divided-container">
+            {loading ? (
+              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                Loading recent activity...
+              </div>
+            ) : activityLogs.length > 0 ? (
+              activityLogs.map((log) => (
+                <ActivityRow
+                  key={log.id}
+                  icon={Activity}
+                  description={`${log.eventType}: ${log.target}`}
+                  timestamp={log.timestamp}
+                  status={log.status === 'CRITICAL' || log.status === 'FAILURE' ? 'critical' : log.status === 'SUCCESS' ? 'healthy' : 'warning'}
+                  statusLabel={log.status}
+                />
+              ))
+            ) : (
+              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                No recent activity records found.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+

@@ -1,7 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Shield, Lock, UserCheck, AlertCircle, ArrowRight, ArrowLeft } from 'lucide-react';
+import {
+  Shield,
+  UserCheck,
+  AlertCircle,
+  ArrowRight,
+  ArrowLeft,
+  ShieldCheck,
+  Zap,
+  Lock,
+  Server,
+  Activity,
+  FileText
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { StatusPill } from '../components/ui/StatusPill';
+import '../styles/login.css';
 
 export function LoginPage() {
   const [username, setUsername] = useState('admin@reconcileos.internal');
@@ -36,169 +50,196 @@ export function LoginPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'radial-gradient(circle at 50% 30%, #EFE8DD 0%, #F5F0E8 100%)',
-        padding: '20px'
-      }}
-    >
-      <div style={{ marginBottom: '16px' }}>
-        <Link
-          to="/landing"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '0.85rem',
-            fontWeight: 600,
-            color: '#7865A5',
-            textDecoration: 'none'
-          }}
-        >
-          <ArrowLeft size={16} /> Back to ReconcileOS Public Site
-        </Link>
-      </div>
+    <div className="login-page">
+      {/* Decorative Left Panel */}
+      <div className="login-left-panel">
+        <div className="login-left-content">
+          {/* Back to landing */}
+          <Link to="/landing" className="login-back-link">
+            <ArrowLeft size={16} />
+            <span>Back to ReconcileOS</span>
+          </Link>
 
-      <div
-        className="card"
-        style={{
-          width: '100%',
-          maxWidth: '460px',
-          padding: '32px',
-          border: '1px solid var(--border-color)',
-          boxShadow: 'var(--shadow-md)',
-          background: '#FFFDF9'
-        }}
-      >
-        {/* Brand Header */}
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--accent-blue-glow)',
-              border: '1px solid var(--accent-blue)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--accent-blue)',
-              margin: '0 auto 12px'
-            }}
-          >
-            <Shield size={26} />
+          {/* Brand Block */}
+          <div className="login-brand-block">
+            <div className="login-brand-icon">
+              <Shield size={28} />
+            </div>
+            <h1 className="login-brand-title">ReconcileOS</h1>
+            <p className="login-brand-tagline">
+              Continuous Integrity &amp; Self-Healing Identity Platform
+            </p>
           </div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)' }}>
-            ReconcileOS Security Access
-          </h1>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Continuous Integrity & Role-Based Access Control
-          </p>
+
+          {/* Feature Pills */}
+          <div className="login-feature-list">
+            <div className="login-feature-pill">
+              <div className="login-feature-pill-icon">
+                <Zap size={16} />
+              </div>
+              <div>
+                <div className="login-feature-pill-title">Automated Drift Detection</div>
+                <div className="login-feature-pill-desc">Real-time cross-system reconciliation</div>
+              </div>
+            </div>
+
+            <div className="login-feature-pill">
+              <div className="login-feature-pill-icon">
+                <ShieldCheck size={16} />
+              </div>
+              <div>
+                <div className="login-feature-pill-title">Human-in-the-Loop Approvals</div>
+                <div className="login-feature-pill-desc">SecOps gated repair execution</div>
+              </div>
+            </div>
+
+            <div className="login-feature-pill">
+              <div className="login-feature-pill-icon">
+                <FileText size={16} />
+              </div>
+              <div>
+                <div className="login-feature-pill-title">Tamper-Evident Audit Trail</div>
+                <div className="login-feature-pill-desc">SHA-256 cryptographic hash chain</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Floating Decorative Orbs */}
+          <div className="login-orb login-orb-1" />
+          <div className="login-orb login-orb-2" />
+          <div className="login-orb login-orb-3" />
         </div>
 
-        {/* Error Alert */}
-        {error && (
-          <div
-            style={{
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid var(--status-danger-border)',
-              color: 'var(--status-danger)',
-              padding: '10px 14px',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.825rem',
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <AlertCircle size={16} />
-            <span>{error}</span>
+        {/* Bottom Trust Bar */}
+        <div className="login-trust-bar">
+          <div className="login-trust-item">
+            <Server size={14} />
+            <span>5 Connected Systems</span>
           </div>
-        )}
+          <div className="login-trust-divider" />
+          <div className="login-trust-item">
+            <Activity size={14} />
+            <span>Daemon Active</span>
+          </div>
+          <div className="login-trust-divider" />
+          <div className="login-trust-item">
+            <Lock size={14} />
+            <span>Zero-Trust Enforcement</span>
+          </div>
+        </div>
+      </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              Corporate Identity / Email
-            </label>
-            <input
-              type="text"
-              className="search-input"
-              style={{ paddingLeft: '12px' }}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="user@reconcileos.internal"
-              required
-            />
+      {/* Right Form Panel */}
+      <div className="login-right-panel">
+        <div className="login-form-wrapper">
+          {/* Form Header */}
+          <div className="login-form-header">
+            <div className="login-form-icon">
+              <Lock size={22} />
+            </div>
+            <h2 className="login-form-title">Security Access Portal</h2>
+            <p className="login-form-subtitle">
+              Authenticate with your corporate identity to access the Integrity Control Center
+            </p>
           </div>
 
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              Password
-            </label>
-            <input
-              type="password"
-              className="search-input"
-              style={{ paddingLeft: '12px' }}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
+          {/* Error Alert */}
+          {error && (
+            <div className="login-error-alert">
+              <AlertCircle size={18} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="login-form">
+            <div className="login-field">
+              <label className="login-label" htmlFor="login-email">
+                Corporate Identity / Email
+              </label>
+              <div className="login-input-wrapper">
+                <UserCheck size={16} className="login-input-icon" />
+                <input
+                  id="login-email"
+                  type="text"
+                  className="login-input"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="user@reconcileos.internal"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="login-field">
+              <label className="login-label" htmlFor="login-password">
+                Password
+              </label>
+              <div className="login-input-wrapper">
+                <Lock size={16} className="login-input-icon" />
+                <input
+                  id="login-password"
+                  type="password"
+                  className="login-input"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="login-submit-btn"
+              disabled={loading}
+            >
+              <span>{loading ? 'Authenticating...' : 'Sign In with SimpleJWT'}</span>
+              {!loading && <ArrowRight size={18} />}
+            </button>
+          </form>
+
+          {/* Divider */}
+          <div className="login-divider">
+            <span>Quick-Fill Role Presets</span>
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%', padding: '10px', fontSize: '0.9rem' }}
-            disabled={loading}
-          >
-            {loading ? 'Authenticating...' : 'Sign In with SimpleJWT'} <ArrowRight size={16} />
-          </button>
-        </form>
-
-        {/* Quick-Fill Demo Presets */}
-        <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
-            Quick-Fill Role Presets (Demonstration)
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {/* Quick-Fill Demo Presets */}
+          <div className="login-presets">
             <button
               type="button"
-              className="btn btn-secondary"
-              style={{ justifyContent: 'space-between', fontSize: '0.78rem', padding: '6px 12px' }}
+              className="preset-btn"
               onClick={() => handlePresetSelect('admin@reconcileos.internal', 'admin123')}
             >
-              <span><strong>ADMIN:</strong> admin@reconcileos.internal</span>
-              <span className="badge badge-critical" style={{ fontSize: '0.65rem' }}>Full Control</span>
+              <span className="preset-btn-info">
+                <strong>ADMIN:</strong>
+                <span>admin@reconcileos.internal</span>
+              </span>
+              <StatusPill status="critical" label="Full Control" size="small" />
             </button>
 
             <button
               type="button"
-              className="btn btn-secondary"
-              style={{ justifyContent: 'space-between', fontSize: '0.78rem', padding: '6px 12px' }}
+              className="preset-btn"
               onClick={() => handlePresetSelect('operator@reconcileos.internal', 'operator123')}
             >
-              <span><strong>OPERATOR:</strong> operator@reconcileos.internal</span>
-              <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>Reconcile & Plan</span>
+              <span className="preset-btn-info">
+                <strong>OPERATOR:</strong>
+                <span>operator@reconcileos.internal</span>
+              </span>
+              <StatusPill status="warning" label="Reconcile & Plan" size="small" />
             </button>
 
             <button
               type="button"
-              className="btn btn-secondary"
-              style={{ justifyContent: 'space-between', fontSize: '0.78rem', padding: '6px 12px' }}
+              className="preset-btn"
               onClick={() => handlePresetSelect('viewer@reconcileos.internal', 'viewer123')}
             >
-              <span><strong>VIEWER:</strong> viewer@reconcileos.internal</span>
-              <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>Read Only</span>
+              <span className="preset-btn-info">
+                <strong>VIEWER:</strong>
+                <span>viewer@reconcileos.internal</span>
+              </span>
+              <StatusPill status="healthy" label="Read Only" size="small" />
             </button>
           </div>
         </div>

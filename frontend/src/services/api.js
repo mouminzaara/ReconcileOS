@@ -53,7 +53,10 @@ async function fetchJson(endpoint, options = {}) {
       } catch {
         errorData = { detail: errorText };
       }
-      throw new Error(errorData.detail || errorData.message || `API Error HTTP ${response.status}`);
+      const err = new Error(errorData.detail || errorData.message || `API Error HTTP ${response.status}`);
+      err.data = errorData;
+      err.status = response.status;
+      throw err;
     }
 
     return await response.json();
@@ -89,6 +92,25 @@ export const api = {
   // Employees API
   getEmployees: () => fetchJson('/employees/'),
   getEmployeeDetail: (id) => fetchJson(`/employees/${id}/`),
+  createEmployee: (data) =>
+    fetchJson('/employees/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateEmployee: (id, data) =>
+    fetchJson(`/employees/${id}/`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  terminateEmployee: (id, reason = '') =>
+    fetchJson(`/employees/${id}/terminate/`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+  deleteEmployee: (id) =>
+    fetchJson(`/employees/${id}/`, {
+      method: 'DELETE',
+    }),
 
   // Connected Systems & Multi-System State
   getCollectedStates: () => fetchJson('/reconciliation/state/'),
@@ -139,4 +161,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ comment }),
     }),
+
+  // Audit Logs Engine
+  getAuditLogs: () => fetchJson('/audit/logs/'),
+  verifyAuditChain: () => fetchJson('/audit/logs/verify_chain/'),
 };
+

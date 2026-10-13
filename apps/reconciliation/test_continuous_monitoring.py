@@ -147,3 +147,36 @@ class ContinuousIntegrityMonitoringTestCase(TestCase):
 
         self.vpn_access.refresh_from_db()
         self.assertEqual(self.vpn_access.status, VPNAccessStatus.DISABLED)
+
+    def test_full_fleet_continuous_monitoring_cycle(self):
+        """
+        Regression test: Verify that calling run_monitoring_cycle() without employee_id
+        evaluates all employees across the fleet without raising AttributeError.
+        """
+        # Create a second employee with drift to ensure multi-employee evaluation
+        emp2 = Employee.objects.create(
+            full_name='Priya Sharma',
+            email='priya.sharma@company.com',
+            department='Sales',
+            status=EmployeeStatus.TERMINATED
+        )
+        VPNAccess.objects.create(
+            employee=emp2,
+            status=VPNAccessStatus.ENABLED
+        )
+
+        # Re-enable VPN for Rahul to create drift
+        self.vpn_access.enable()
+
+        summary = self.monitor.run_monitoring_cycle(auto_approve_policy=True)
+
+        self.assertIsInstance(summary, dict)
+        self.assertEqual(summary['employees_evaluated_count'], 2)
+        self.assertEqual(summary['violations_detected_count'], 2)
+        self.assertEqual(summary['repair_plans_generated_count'], 2)
+        self.assertEqual(summary['approvals_processed_count'], 2)
+        self.assertEqual(summary['repairs_executed_count'], 2)
+        self.assertEqual(summary['verifications_completed_count'], 2)
+        self.assertEqual(summary['remaining_open_violations_count'], 0)
+        self.assertEqual(summary['system_status'], 'CONSISTENT')
+
