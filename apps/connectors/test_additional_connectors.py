@@ -137,22 +137,42 @@ class AdditionalConnectorsTestCase(TestCase):
 
     def test_full_five_system_reconciliation_and_self_healing_cycle(self):
         """
-        Verify continuous monitoring cycle resolves all 4 downstream drift violations for Rahul:
+        Verify continuous monitoring cycle detects all 4 downstream drift violations for Rahul:
         HR: TERMINATED
-        VPN: ENABLED -> DISABLED
-        GitHub: MEMBER -> REVOKED
-        Cloud: DEVELOPER_ROLE -> NO_ROLE
-        Slack: ACTIVE -> DEACTIVATED
-        Result: CONSISTENT (0 open violations)
+        VPN: ENABLED
+        GitHub: MEMBER
+        Cloud: DEVELOPER_ROLE
+        Slack: ACTIVE
+        Generates pending plans, requires human approval, executes approved repairs, and resolves violations.
         """
+        from apps.approvals.models import ApprovalRequest
+        from apps.approvals.services import ApprovalService
+        from apps.workflows.executor import RepairExecutor
+
         monitor = ContinuousMonitor()
-        summary = monitor.run_monitoring_cycle(employee_id=str(self.employee.id), auto_approve_policy=True)
+        summary = monitor.run_monitoring_cycle(employee_id=str(self.employee.id), auto_approve_policy=False)
 
         self.assertEqual(summary['violations_detected_count'], 4)
-        self.assertEqual(summary['repairs_executed_count'], 4)
-        self.assertEqual(summary['verifications_completed_count'], 4)
-        self.assertEqual(summary['system_status'], 'CONSISTENT')
-        self.assertEqual(summary['remaining_open_violations_count'], 0)
+        self.assertEqual(summary['repair_plans_generated_count'], 4)
+        self.assertEqual(summary['approvals_processed_count'], 0)
+        self.assertEqual(summary['repairs_executed_count'], 0)
+        self.assertEqual(summary['system_status'], 'DRIFT_DETECTED')
+        self.assertEqual(summary['remaining_open_violations_count'], 4)
+
+        # Human Approval required for each plan
+        for plan in RepairPlan.objects.filter(employee=self.employee, status=PlanStatus.PENDING):
+            app_req = ApprovalRequest.objects.get(repair_plan=plan)
+            ApprovalService.approve_request(app_req)
+
+        # Execute approved repairs
+        executor = RepairExecutor()
+        for plan in RepairPlan.objects.filter(employee=self.employee, status=PlanStatus.APPROVED):
+            executor.execute_plan(plan)
+
+        # Subsequent monitoring cycle confirms compliance
+        final_summary = monitor.run_monitoring_cycle(employee_id=str(self.employee.id), auto_approve_policy=False)
+        self.assertEqual(final_summary['system_status'], 'CONSISTENT')
+        self.assertEqual(final_summary['remaining_open_violations_count'], 0)
 
         # Verify all downstream models updated to non-privileged compliant states
         self.vpn_access.refresh_from_db()

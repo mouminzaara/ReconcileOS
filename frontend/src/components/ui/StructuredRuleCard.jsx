@@ -1,6 +1,6 @@
 import React from 'react';
 import { StatusPill } from './StatusPill';
-import { ArrowRight, ShieldCheck } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 /**
  * StructuredRuleCard — Represents a discrete invariant rule object with condition -> consequence flow.
@@ -16,17 +16,31 @@ export function StructuredRuleCard({
   targetSystems = []
 }) {
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <div
+      style={{
+        backgroundColor: '#FFFDF9',
+        borderRadius: '16px',
+        border: '1px solid rgba(120, 101, 165, 0.12)',
+        padding: '28px 32px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px'
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }} className="font-mono">
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }} className="font-mono">
             {ruleId}
           </span>
-          <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+          <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
             {title}
-          </h4>
+          </h3>
         </div>
-        <StatusPill status={severity.toLowerCase()} label={`Severity: ${severity}`} size="small" />
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <StatusPill status={severity.toLowerCase()} label={`Severity: ${severity}`} size="small" />
+          <StatusPill status={status.toLowerCase() === 'enforced' ? 'healthy' : 'neutral'} label={status.toUpperCase()} size="small" />
+        </div>
       </div>
 
       {/* Condition -> Consequence Block */}
@@ -34,44 +48,45 @@ export function StructuredRuleCard({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
-          padding: '12px 14px',
-          borderRadius: 'var(--radius-btn)',
+          gap: '20px',
+          padding: '16px 20px',
+          borderRadius: '12px',
           backgroundColor: 'var(--bg-base)',
           border: '1px solid var(--border-hairline)',
           fontSize: '13px'
         }}
       >
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-            IF (Condition)
+          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Condition (Invariant Trigger)
           </div>
-          <div style={{ fontWeight: 600, color: 'var(--status-critical)', marginTop: '2px' }}>
+          <div className="font-mono" style={{ fontWeight: 600, color: 'var(--status-critical)', marginTop: '6px', fontSize: '13px' }}>
             {condition}
           </div>
         </div>
 
-        <ArrowRight size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+        <ArrowRight size={18} style={{ color: 'var(--accent-primary)', flexShrink: 0, opacity: 0.6 }} />
 
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-            THEN (Consequence)
+          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Consequence (Target Enforcement)
           </div>
-          <div style={{ fontWeight: 600, color: 'var(--status-healthy)', marginTop: '2px' }}>
+          <div className="font-mono" style={{ fontWeight: 600, color: 'var(--status-healthy)', marginTop: '6px', fontSize: '13px' }}>
             {consequence}
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
-        <div style={{ display: 'flex', gap: '6px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: 'var(--text-muted)' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Scope:</span>
           {targetSystems.map((sys) => (
             <span
               key={sys}
               style={{
-                fontSize: '11px',
-                padding: '2px 6px',
-                borderRadius: 'var(--radius-btn)',
+                fontSize: '12px',
+                padding: '3px 10px',
+                borderRadius: '9999px',
                 backgroundColor: 'var(--accent-primary-light)',
                 color: 'var(--accent-primary)',
                 fontWeight: 600
@@ -81,7 +96,6 @@ export function StructuredRuleCard({
             </span>
           ))}
         </div>
-        <StatusPill status="healthy" label={status.toUpperCase()} size="small" />
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, RefreshCw, AlertCircle } from 'lucide-react';
+import { Zap, RefreshCw, AlertCircle, Power, Sparkles, CheckCircle2 } from 'lucide-react';
 import { StructuredRuleCard } from '../components/ui/StructuredRuleCard';
 import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
@@ -9,6 +9,15 @@ export function RulesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [toggleLoadingId, setToggleLoadingId] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+  const [draftPrompt, setDraftPrompt] = useState('');
+  const [draftLoading, setDraftLoading] = useState(false);
+
+  const showFeedback = (message, type = 'success') => {
+    setFeedback({ message, type });
+    setTimeout(() => setFeedback(null), 5000);
+  };
 
   const loadRules = async () => {
     setLoading(true);
@@ -18,11 +27,13 @@ export function RulesPage() {
       const list = res.results || res;
       if (Array.isArray(list)) {
         const formatted = list.map(r => ({
-          id: r.rule_code || r.id,
+          id: r.id,
+          ruleCode: r.rule_code || r.id,
           name: r.name,
           description: r.description,
           targetSystems: [r.source_system || 'HR', r.target_system || 'VPN'],
           severity: r.severity || 'HIGH',
+          isEnabled: r.is_enabled,
           status: r.is_enabled ? 'ENFORCED' : 'DISABLED',
           condition: r.rule_expression || `${r.source_system || 'HR'}.${r.condition_attribute || 'Status'} == '${r.condition_value || r.expected_source_status || 'TERMINATED'}'`,
           consequence: `${r.target_system || 'VPN'}.${r.expected_attribute || 'Access'} = '${r.expected_value || r.expected_target_status || 'DISABLED'}'`
@@ -46,33 +57,72 @@ export function RulesPage() {
 
   const handleEvaluateAll = async () => {
     setActionLoading(true);
+    setFeedback(null);
     try {
-      await api.runReconciliation();
+      const res = await api.runReconciliation();
+      showFeedback(res.message || 'Rule evaluation completed successfully.');
       await loadRules();
     } catch (err) {
-      alert(`Rule evaluation error: ${err.message}`);
+      showFeedback(`Rule evaluation error: ${err.message}`, 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
+  const handleToggleRule = async (ruleId) => {
+    if (toggleLoadingId) return;
+    setToggleLoadingId(ruleId);
+    setFeedback(null);
+    try {
+      const res = await api.toggleRule(ruleId);
+      showFeedback(res.message || 'Rule status updated.');
+      await loadRules();
+    } catch (err) {
+      showFeedback(`Toggle failed: ${err.message}`, 'error');
+      await loadRules();
+    } finally {
+      setToggleLoadingId(null);
+    }
+  };
+
+  const handleGenerateDraft = async () => {
+    if (!draftPrompt.trim() || draftLoading) return;
+    setDraftLoading(true);
+    setFeedback(null);
+    try {
+      const res = await api.generateDraftRule(draftPrompt.trim());
+      showFeedback(res.message || 'AI draft rule created. Review and enable it below.');
+      setDraftPrompt('');
+      await loadRules();
+    } catch (err) {
+      showFeedback(`AI draft generation failed: ${err.message}`, 'error');
+    } finally {
+      setDraftLoading(false);
+    }
+  };
+
   return (
     <div className="page-content">
-      <div className="page-header">
+      {/* Editorial Header */}
+      <div className="page-header" style={{ marginBottom: '40px' }}>
         <div>
+          <div className="page-eyebrow">
+            <span className="page-eyebrow-dot" />
+            Invariant Enforcement
+          </div>
           <h1 className="page-title">
-            <span>Rules Engine</span>
+            <span>Invariant Rules Engine</span>
           </h1>
           <p className="page-subtitle">
-            Formal multi-system integrity invariants enforced deterministically across apps
+            Formal multi-system integrity invariants enforced deterministically across enterprise applications and access gateways.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <Button variant="secondary" icon={RefreshCw} onClick={loadRules} disabled={loading}>
             Refresh
           </Button>
           <Button variant="primary" icon={Zap} onClick={handleEvaluateAll} disabled={actionLoading || loading}>
-            Evaluate All Rules
+            {actionLoading ? 'Evaluating...' : 'Evaluate All Invariants'}
           </Button>
         </div>
       </div>
@@ -80,9 +130,9 @@ export function RulesPage() {
       {error && (
         <div
           style={{
-            marginBottom: '20px',
-            padding: '14px 18px',
-            borderRadius: 'var(--radius-btn)',
+            marginBottom: '32px',
+            padding: '16px 22px',
+            borderRadius: '12px',
             backgroundColor: 'var(--status-critical-bg)',
             border: '1px solid var(--status-critical-border)',
             color: 'var(--status-critical)',
@@ -94,7 +144,7 @@ export function RulesPage() {
             flexWrap: 'wrap'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 600 }}>
             <AlertCircle size={18} />
             <span>{error}</span>
           </div>
@@ -104,31 +154,140 @@ export function RulesPage() {
         </div>
       )}
 
+      {feedback && (
+        <div
+          style={{
+            marginBottom: '32px',
+            padding: '16px 22px',
+            borderRadius: '12px',
+            backgroundColor: feedback.type === 'error'
+              ? 'var(--status-critical-bg)'
+              : 'var(--status-healthy-bg)',
+            border: `1px solid ${feedback.type === 'error'
+              ? 'var(--status-critical-border)'
+              : 'var(--status-healthy-border)'}`,
+            color: feedback.type === 'error'
+              ? 'var(--status-critical)'
+              : 'var(--status-healthy)',
+            fontSize: '13px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
+          }}
+        >
+          {feedback.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+          <span>{feedback.message}</span>
+        </div>
+      )}
+
+      {/* AI Rule Draft Natural Language Prompt Box */}
+      <div
+        style={{
+          marginBottom: '40px',
+          padding: '28px 32px',
+          borderRadius: '16px',
+          backgroundColor: '#FFFDF9',
+          border: '1px solid rgba(120, 101, 165, 0.16)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        }}
+      >
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-primary)', fontWeight: 700, fontSize: '13px', marginBottom: '4px' }}>
+            <Sparkles size={16} />
+            <span>AI Rule Synthesis</span>
+          </div>
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+            Describe an identity invariant in natural language. The system synthesizes formal logic into a draft rule requiring administrative review.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            id="draft-prompt-input"
+            type="text"
+            value={draftPrompt}
+            onChange={(e) => setDraftPrompt(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleGenerateDraft(); }}
+            placeholder="e.g. Terminated employees must not retain active Slack accounts or VPN credentials"
+            disabled={draftLoading}
+            style={{
+              flex: 1,
+              minWidth: '280px',
+              padding: '13px 20px',
+              fontSize: '14px',
+              borderRadius: '9999px',
+              border: '1px solid var(--border-hairline)',
+              backgroundColor: 'var(--bg-base)',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.04)'
+            }}
+          />
+          <Button
+            variant="primary"
+            icon={Sparkles}
+            onClick={handleGenerateDraft}
+            disabled={draftLoading || !draftPrompt.trim()}
+          >
+            {draftLoading ? 'Synthesizing…' : 'Generate Draft Rule'}
+          </Button>
+        </div>
+      </div>
+
       {loading && rules.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+        <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--text-muted)', fontSize: '14px' }}>
           Loading invariant rules...
         </div>
       )}
 
       {!loading && !error && rules.length === 0 && (
-        <div className="card" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '60px 24px',
+            backgroundColor: '#FFFDF9',
+            borderRadius: '16px',
+            border: '1px solid rgba(120, 101, 165, 0.12)',
+            color: 'var(--text-muted)'
+          }}
+        >
           No invariant rules configured.
         </div>
       )}
 
       {rules.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {rules.map((rule) => (
-            <StructuredRuleCard
-              key={rule.id}
-              ruleId={rule.id}
-              title={rule.name}
-              condition={rule.condition || "HR.Status == 'TERMINATED'"}
-              consequence={rule.consequence || "VPN.Access = 'DISABLED'"}
-              severity={rule.severity}
-              status={rule.status}
-              targetSystems={rule.targetSystems}
-            />
+            <div key={rule.ruleCode} style={{ position: 'relative' }}>
+              <StructuredRuleCard
+                ruleId={rule.ruleCode}
+                title={rule.name}
+                condition={rule.condition}
+                consequence={rule.consequence}
+                severity={rule.severity}
+                status={rule.status}
+                targetSystems={rule.targetSystems}
+              />
+              <div style={{ position: 'absolute', bottom: '26px', right: '32px' }}>
+                <Button
+                  variant={rule.isEnabled ? 'secondary' : 'primary'}
+                  size="small"
+                  icon={Power}
+                  onClick={() => handleToggleRule(rule.id)}
+                  disabled={toggleLoadingId === rule.id || !!toggleLoadingId}
+                >
+                  {toggleLoadingId === rule.id
+                    ? 'Updating…'
+                    : rule.isEnabled
+                      ? 'Disable Rule'
+                      : 'Enable Rule'}
+                </Button>
+              </div>
+            </div>
           ))}
         </div>
       )}

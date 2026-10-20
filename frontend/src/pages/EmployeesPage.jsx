@@ -209,19 +209,21 @@ export function EmployeesPage() {
       {/* Page Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">
-            <span>Employees</span>
-          </h1>
+          <div className="page-eyebrow">
+            <span className="page-eyebrow-dot" />
+            <span>Identity Directory</span>
+          </div>
+          <h1 className="page-title">Employees</h1>
           <p className="page-subtitle">
-            Primary HR system of record — identity lifecycle directory
+            Primary HR system of record — identity lifecycle directory and employment status
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="page-header-actions">
           <Button variant="secondary" icon={RefreshCw} onClick={loadEmployees} disabled={loading}>
             Refresh
           </Button>
           <Button variant="primary" icon={Plus} onClick={handleOpenAddModal}>
-            Add employee
+            Add Employee
           </Button>
         </div>
       </div>
@@ -229,9 +231,9 @@ export function EmployeesPage() {
       {error && (
         <div
           style={{
-            marginBottom: '20px',
-            padding: '14px 18px',
-            borderRadius: 'var(--radius-btn)',
+            marginBottom: 'var(--space-xl)',
+            padding: '14px 20px',
+            borderRadius: '10px',
             backgroundColor: 'var(--status-critical-bg)',
             border: '1px solid var(--status-critical-border)',
             color: 'var(--status-critical)',
@@ -253,89 +255,87 @@ export function EmployeesPage() {
         </div>
       )}
 
-      {/* Controls & Filters Bar */}
-      <div className="card" style={{ marginBottom: '20px', padding: '16px' }}>
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ position: 'relative', width: '320px' }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input
-              type="text"
-              className="input-base"
-              style={{ width: '100%', paddingLeft: '36px' }}
-              placeholder="Search name, email, department..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+      {/* Controls & Filters Bar — Clean toolbar without card enclosure */}
+      <div style={{ marginBottom: 'var(--space-xl)', display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ position: 'relative', width: '340px' }}>
+          <Search size={16} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+          <input
+            type="text"
+            className="input-base"
+            style={{ width: '100%', paddingLeft: '44px', height: '42px', borderRadius: '9999px' }}
+            placeholder="Search name, email, department..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <Filter size={15} style={{ color: 'var(--text-muted)' }} />
-            <span style={{ fontSize: '13px', color: 'var(--text-muted)', marginRight: '4px' }}>Filter:</span>
-            <Button
-              variant={statusFilter === 'ALL' ? 'primary' : 'secondary'}
-              size="small"
-              onClick={() => setStatusFilter('ALL')}
-            >
-              All ({employees.length})
-            </Button>
-            <Button
-              variant={statusFilter === 'ACTIVE' ? 'primary' : 'secondary'}
-              size="small"
-              onClick={() => setStatusFilter('ACTIVE')}
-            >
-              Active ({employees.filter(e => e.status === 'ACTIVE').length})
-            </Button>
-            <Button
-              variant={statusFilter === 'TERMINATED' ? 'primary' : 'secondary'}
-              size="small"
-              onClick={() => setStatusFilter('TERMINATED')}
-            >
-              Terminated ({employees.filter(e => e.status === 'TERMINATED').length})
-            </Button>
-          </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <Filter size={15} style={{ color: 'var(--text-muted)' }} />
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)', marginRight: '4px' }}>Filter:</span>
+          <Button
+            variant={statusFilter === 'ALL' ? 'primary' : 'secondary'}
+            size="small"
+            onClick={() => setStatusFilter('ALL')}
+          >
+            All ({employees.length})
+          </Button>
+          <Button
+            variant={statusFilter === 'ACTIVE' ? 'primary' : 'secondary'}
+            size="small"
+            onClick={() => setStatusFilter('ACTIVE')}
+          >
+            Active ({employees.filter(e => e.status === 'ACTIVE').length})
+          </Button>
+          <Button
+            variant={statusFilter === 'TERMINATED' ? 'primary' : 'secondary'}
+            size="small"
+            onClick={() => setStatusFilter('TERMINATED')}
+          >
+            Terminated ({employees.filter(e => e.status === 'TERMINATED').length})
+          </Button>
         </div>
       </div>
 
       {/* Directory Table */}
-      <div className="plain-divided-container">
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+      <div className="editorial-table-container">
+        <table className="editorial-table">
           <thead>
-            <tr style={{ backgroundColor: 'var(--bg-base)', borderBottom: '1px solid var(--border-hairline)' }}>
-              <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>UUID</th>
-              <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>Full Name</th>
-              <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>Corporate Email</th>
-              <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>Department</th>
-              <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>HR Status</th>
-              <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>Created</th>
-              <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+            <tr>
+              <th>UUID</th>
+              <th>Full Name</th>
+              <th>Corporate Email</th>
+              <th>Department</th>
+              <th>HR Status</th>
+              <th>Created</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredEmployees.map((emp) => {
               const isTerminated = emp.status === 'TERMINATED';
               return (
-                <tr key={emp.id} style={{ borderBottom: '1px solid var(--border-hairline)', transition: 'background-color 0.15s ease' }}>
-                  <td className="font-mono" style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                <tr key={emp.id}>
+                  <td className="font-mono" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                     {emp.id.slice(0, 8)}...{emp.id.slice(-4)}
                   </td>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                     {emp.fullName}
                   </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>
+                  <td style={{ color: 'var(--text-secondary)' }}>
                     {emp.email}
                   </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>
+                  <td style={{ color: 'var(--text-secondary)' }}>
                     {emp.department}
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
+                  <td>
                     <StatusPill status={isTerminated ? 'neutral' : 'healthy'} label={emp.status} size="small" />
                   </td>
-                  <td className="font-mono" style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  <td className="font-mono" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                     {emp.createdAt}
                   </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                  <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', gap: '6px' }}>
-                      <Button variant="tertiary" size="small" icon={Eye} onClick={() => handleOpenDetailModal(emp)}>
+                      <Button variant="ghost" size="small" icon={Eye} onClick={() => handleOpenDetailModal(emp)}>
                         View
                       </Button>
                       <Button variant="secondary" size="small" icon={Edit2} onClick={() => handleOpenEditModal(emp)}>
@@ -353,7 +353,7 @@ export function EmployeesPage() {
             })}
             {filteredEmployees.length === 0 && (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '56px 24px', color: 'var(--text-muted)' }}>
                   {loading ? 'Loading employees...' : (employees.length === 0 ? 'No employees found in HR directory.' : 'No employees found matching the filter.')}
                 </td>
               </tr>

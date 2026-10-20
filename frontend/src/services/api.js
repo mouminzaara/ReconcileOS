@@ -118,6 +118,15 @@ export const api = {
 
   // Invariant Rules
   getRules: () => fetchJson('/rules/'),
+  toggleRule: (ruleId) =>
+    fetchJson(`/rules/${ruleId}/toggle/`, {
+      method: 'POST',
+    }),
+  generateDraftRule: (prompt) =>
+    fetchJson('/rules/generate_draft/', {
+      method: 'POST',
+      body: JSON.stringify({ prompt }),
+    }),
 
   // Reconciliation & Drift Violations
   getViolations: (params = '') => fetchJson(`/reconciliation/violations/${params}`),
@@ -134,10 +143,10 @@ export const api = {
 
   // Repair Plans & Execution Engine
   getRepairPlans: () => fetchJson('/workflows/plans/'),
-  generateRepairPlans: (emailOrId = null) =>
+  generateRepairPlans: (employeeId = null) =>
     fetchJson('/workflows/plans/generate/', {
       method: 'POST',
-      body: JSON.stringify(emailOrId ? { email: emailOrId } : {}),
+      body: JSON.stringify(employeeId ? { employee_id: employeeId } : {}),
     }),
   executeRepairPlan: (planId) =>
     fetchJson(`/workflows/plans/${planId}/execute/`, {

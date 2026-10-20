@@ -5,7 +5,7 @@ Management command to execute Continuous Integrity Monitoring cycles.
 import json
 import time
 import logging
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from apps.reconciliation.monitor import ContinuousMonitor
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--auto-approve',
             action='store_true',
-            help='Automatically approve repair plans generated during the monitoring cycle according to policy.'
+            help='(Disabled) Automatic approval is disallowed by governance policy.'
         )
 
     def handle(self, *args, **options):
@@ -43,6 +43,12 @@ class Command(BaseCommand):
         interval = options['interval']
         employee_id = options['employee_id']
         auto_approve = options['auto_approve']
+
+        if auto_approve:
+            raise CommandError(
+                "--auto-approve is disabled by governance policy. "
+                "Mandatory human approval is enforced for all repair plans."
+            )
 
         monitor = ContinuousMonitor()
 
@@ -52,7 +58,7 @@ class Command(BaseCommand):
             self.stdout.write("Executing single monitoring cycle...")
             summary = monitor.run_monitoring_cycle(
                 employee_id=employee_id,
-                auto_approve_policy=auto_approve
+                auto_approve_policy=False
             )
             self.stdout.write(json.dumps(summary, indent=2))
             if summary['system_status'] == 'CONSISTENT':
@@ -68,7 +74,7 @@ class Command(BaseCommand):
                     self.stdout.write(f"\n--- Monitoring Cycle #{cycle_count} ---")
                     summary = monitor.run_monitoring_cycle(
                         employee_id=employee_id,
-                        auto_approve_policy=auto_approve
+                        auto_approve_policy=False
                     )
                     self.stdout.write(json.dumps(summary, indent=2))
                     time.sleep(interval)

@@ -9,10 +9,15 @@ verifications, and resolutions.
 import uuid
 import hashlib
 import json
+import datetime
+import threading
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from apps.employees.models import Employee
+
+# Process-level reentrant lock to serialize cryptographic hash-chain computation and storage
+_audit_chain_lock = threading.RLock()
 
 
 class AuditEventType(models.TextChoices):
@@ -99,23 +104,35 @@ class AuditLog(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Append-only save enforcement. Prevents updating existing audit records.
+        Append-only save enforcement with serialized hash-chain coordination.
+        Prevents updating existing audit records and serializes hash computation
+        to prevent forked chains during concurrent writes.
         """
-        if self.pk and AuditLog.objects.filter(pk=self.pk).exists():
-            raise ValidationError("AuditLog records are append-only and cannot be updated.")
+        with _audit_chain_lock:
+            if self.pk and AuditLog.objects.filter(pk=self.pk).exists():
+                raise ValidationError("AuditLog records are append-only and cannot be updated.")
 
-        if not self.timestamp:
-            self.timestamp = timezone.now()
+            # Coordinated retrieval of latest record to ensure sequential chain continuity
+            latest_record = AuditLog.objects.order_by('timestamp', 'id').last()
 
-        # Compute tamper-evident hash chain from previous record
-        latest_record = AuditLog.objects.order_by('timestamp', 'id').last()
-        if latest_record and latest_record.current_hash:
-            self.previous_hash = latest_record.current_hash
-        else:
-            self.previous_hash = '0' * 64
+            # Ensure monotonic timestamp so ordering by ('timestamp', 'id') is strictly deterministic
+            now = timezone.now()
+            if latest_record and latest_record.timestamp:
+                if not self.timestamp or self.timestamp <= latest_record.timestamp:
+                    self.timestamp = latest_record.timestamp + datetime.timedelta(microseconds=1)
+                else:
+                    self.timestamp = max(now, self.timestamp)
+            else:
+                self.timestamp = self.timestamp or now
 
-        self.current_hash = self.calculate_payload_hash(self.previous_hash)
-        super().save(*args, **kwargs)
+            # Compute tamper-evident hash chain from previous record
+            if latest_record and latest_record.current_hash:
+                self.previous_hash = latest_record.current_hash
+            else:
+                self.previous_hash = '0' * 64
+
+            self.current_hash = self.calculate_payload_hash(self.previous_hash)
+            super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         """

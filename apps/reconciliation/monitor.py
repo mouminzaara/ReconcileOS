@@ -93,21 +93,16 @@ class ContinuousMonitor:
             except Exception as exc:
                 logger.error(f"Error generating repair plan for violation {violation.id}: {exc}")
 
-        # 3. Approval Processing
+        # 3. Approval Processing (Mandatory Human Approval Enforcement)
+        # ReconcileOS mandates explicit human-in-the-loop approval before repair execution.
+        # Continuous monitoring detects drift and generates repair plans in PENDING state;
+        # automatic approval is prohibited and will never silently approve pending requests.
         approvals_processed_count = 0
-        for plan in plans_generated:
-            approval_req = ApprovalRequest.objects.filter(repair_plan=plan).first()
-            if approval_req and approval_req.decision == ApprovalDecision.PENDING:
-                if auto_approve_policy:
-                    try:
-                        ApprovalService.approve_request(
-                            approval_req,
-                            comment="Auto-approved by Continuous Integrity Monitoring Policy"
-                        )
-                        approvals_processed_count += 1
-                        logger.info(f"Auto-approved repair plan {plan.id} for {plan.employee.full_name}.")
-                    except Exception as exc:
-                        logger.error(f"Failed to auto-approve repair plan {plan.id}: {exc}")
+        if auto_approve_policy:
+            raise ValueError(
+                "Automatic approval is disabled by governance policy. "
+                "ReconcileOS mandates explicit human-in-the-loop approval before repair execution."
+            )
 
         # 4. Repair Execution & Verification
         repairs_executed_count = 0

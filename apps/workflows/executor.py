@@ -8,7 +8,10 @@ and invoking post-repair empirical verification.
 
 import logging
 import uuid
+import threading
+import time
 from typing import Optional
+from django.db import transaction, OperationalError
 from django.utils import timezone
 from apps.approvals.models import ApprovalRequest, ApprovalDecision
 from apps.connectors.adapters import ConnectorRegistry, ConnectorException
@@ -21,6 +24,29 @@ logger = logging.getLogger(__name__)
 
 # Maximum default bounded retries allowed for a failing operation
 DEFAULT_MAX_RETRIES = 3
+
+# Process-level reentrant lock to serialize execution claiming and avoid SQLite lock contention
+_execution_claim_lock = threading.RLock()
+
+# Bounded retry configuration for transient database lock contention (e.g. SQLite table-level locks)
+MAX_DB_LOCK_RETRIES = 5
+DB_LOCK_RETRY_DELAY = 0.05
+
+
+def _execute_with_db_lock_retry(fn, max_retries: int = MAX_DB_LOCK_RETRIES, delay: float = DB_LOCK_RETRY_DELAY):
+    """
+    Executes a database callable, applying bounded retry on transient database lock errors
+    (e.g., SQLite table-level locks during concurrent execution attempts).
+    Does not suppress non-lock errors or errors beyond max_retries.
+    """
+    for attempt in range(max_retries):
+        try:
+            return fn()
+        except OperationalError as exc:
+            if "locked" in str(exc).lower() and attempt < max_retries - 1:
+                time.sleep(delay)
+                continue
+            raise
 
 
 class IneligiblePlanExecutionException(Exception):
@@ -51,17 +77,29 @@ class RepairExecutor:
 
         Requirements:
         1. RepairPlan status must NOT be COMPLETED or SUCCESS (idempotency check: prevents redundant execution).
-        2. RepairPlan status must be APPROVED, FAILED, or RETRYING.
-        3. Must have an associated ApprovalRequest with decision == APPROVED.
+        2. RepairPlan status must NOT be EXECUTING (concurrency protection check).
+        3. RepairPlan status must be APPROVED, FAILED, or RETRYING.
+        4. Must have an associated ApprovalRequest with decision == APPROVED.
+        5. Must not exceed maximum allowed retries.
         """
         if not repair_plan:
             raise IneligiblePlanExecutionException("Repair plan instance cannot be None.")
+
+        # Refresh from database if persisted to avoid stale in-memory status
+        if repair_plan.pk:
+            repair_plan.refresh_from_db()
 
         # Idempotency check: prevent re-executing already completed/successful operations
         if repair_plan.status in [PlanStatus.COMPLETED, PlanStatus.SUCCESS]:
             raise IneligiblePlanExecutionException(
                 f"Cannot execute repair plan '{repair_plan.id}': Operation is already '{repair_plan.status}'. "
                 f"Redundant execution of successful operations is prevented."
+            )
+
+        # Concurrency protection check: prevent duplicate execution of active plan
+        if repair_plan.status == PlanStatus.EXECUTING:
+            raise IneligiblePlanExecutionException(
+                f"Cannot execute repair plan '{repair_plan.id}': Plan is currently executing (concurrent execution prevented)."
             )
 
         valid_statuses = [PlanStatus.APPROVED, PlanStatus.FAILED, PlanStatus.RETRYING]
@@ -71,7 +109,7 @@ class RepairExecutor:
                 f"Only APPROVED, FAILED, or RETRYING repair plans are eligible for execution."
             )
 
-        # Check approval request status
+        # Check approval request status (Preserves Phase 2A mandatory human approval)
         approval_request = ApprovalRequest.objects.filter(repair_plan=repair_plan).order_by('-created_at').first()
         if not approval_request or approval_request.decision != ApprovalDecision.APPROVED:
             raise IneligiblePlanExecutionException(
@@ -88,7 +126,8 @@ class RepairExecutor:
 
     def execute_plan(self, repair_plan: RepairPlan, executed_by=None, max_retries: int = DEFAULT_MAX_RETRIES, auto_retry: bool = True, correlation_id: Optional[str] = None) -> RepairExecutionLog:
         """
-        Executes an approved RepairPlan with fault-tolerant bounded retry policy and pre-execution idempotency checks.
+        Executes an approved RepairPlan with fault-tolerant bounded retry policy,
+        atomic database concurrency protection, and pre-execution idempotency checks.
 
         Returns:
             RepairExecutionLog: Log object containing execution attempt details and output.
@@ -98,88 +137,121 @@ class RepairExecutor:
 
         actor = str(executed_by.username if hasattr(executed_by, 'username') else executed_by or 'RepairExecutor')
 
-        # 1. Verify plan eligibility & idempotency
-        self.verify_plan_eligibility(repair_plan, max_retries=max_retries)
+        # Synchronize in-process plan eligibility verification and atomic status claiming
+        with _execution_claim_lock:
+            # 1. Server-side eligibility & human approval verification
+            _execute_with_db_lock_retry(lambda: self.verify_plan_eligibility(repair_plan, max_retries=max_retries))
 
-        # 2. Determine current attempt number & deterministic idempotency key
-        existing_attempts = RepairExecutionLog.objects.filter(repair_plan=repair_plan).count()
-        attempt_number = existing_attempts + 1
-        idempotency_key = f"idemp_{repair_plan.id}_attempt_{attempt_number}"
+            # 2. Atomic Compare-and-Swap state transition: APPROVED/RETRYING/FAILED -> EXECUTING
+            # Database-enforced atomic conditional update ensures exactly one execution
+            # thread/request can claim this plan across concurrent requests on all database engines.
+            def _claim_status():
+                with transaction.atomic():
+                    return RepairPlan.objects.filter(
+                        id=repair_plan.id,
+                        status__in=[PlanStatus.APPROVED, PlanStatus.FAILED, PlanStatus.RETRYING]
+                    ).update(status=PlanStatus.EXECUTING, updated_at=timezone.now())
 
-        # 3. Pre-execution state inspection (Timeout-recovery & Idempotency Check)
-        target_sys_key = (repair_plan.target_system or '').strip().lower()
+            updated = _execute_with_db_lock_retry(_claim_status)
+
+            if updated == 0:
+                _execute_with_db_lock_retry(lambda: repair_plan.refresh_from_db())
+                if repair_plan.status == PlanStatus.EXECUTING:
+                    raise IneligiblePlanExecutionException(
+                        f"Cannot execute repair plan '{repair_plan.id}': Plan is currently executing (concurrent execution prevented)."
+                    )
+                elif repair_plan.status in [PlanStatus.SUCCESS, PlanStatus.COMPLETED]:
+                    raise IneligiblePlanExecutionException(
+                        f"Cannot execute repair plan '{repair_plan.id}': Operation is already '{repair_plan.status}'. "
+                        f"Redundant execution of successful operations is prevented."
+                    )
+                else:
+                    raise IneligiblePlanExecutionException(
+                        f"Cannot execute repair plan '{repair_plan.id}': Current status is '{repair_plan.status}'. "
+                        f"Only APPROVED, FAILED, or RETRYING repair plans are eligible for execution."
+                    )
+
+            repair_plan.status = PlanStatus.EXECUTING
+
+        execution_log = None
+        attempt_number = 1
+        actual_state = 'UNKNOWN'
         expected_state = str(repair_plan.violation.expected_state or '').strip().upper()
 
-        collected_state = self.state_collector.collect_employee_state(repair_plan.employee)
-        target_data = collected_state.get('systems', {}).get(target_sys_key, {})
-        actual_state = str(target_data.get('access_status') or target_data.get('status') or 'UNKNOWN').strip().upper()
+        try:
+            # 3. Determine current attempt number & deterministic idempotency key
+            existing_attempts = RepairExecutionLog.objects.filter(repair_plan=repair_plan).count()
+            attempt_number = existing_attempts + 1
+            idempotency_key = f"idemp_{repair_plan.id}_attempt_{attempt_number}"
 
-        now = timezone.now()
+            # 4. Pre-execution state inspection (Timeout-recovery & Idempotency Check)
+            target_sys_key = (repair_plan.target_system or '').strip().lower()
 
-        # If pre-execution state ALREADY satisfies expected state (e.g. after a previous attempt timed out after downstream mutation)
-        if actual_state == expected_state:
-            repair_plan.status = PlanStatus.SUCCESS
-            repair_plan.save(update_fields=['status', 'updated_at'])
+            collected_state = self.state_collector.collect_employee_state(repair_plan.employee)
+            target_data = collected_state.get('systems', {}).get(target_sys_key, {})
+            actual_state = str(target_data.get('access_status') or target_data.get('status') or 'UNKNOWN').strip().upper()
 
-            msg = (
-                f"Pre-execution state inspection: Downstream system '{repair_plan.target_system}' state is already '{actual_state}'. "
-                f"Repair action '{repair_plan.action}' idempotently satisfied without duplicate mutation."
-            )
+            now = timezone.now()
 
+            # If pre-execution state ALREADY satisfies expected state (e.g. after a previous attempt timed out after downstream mutation)
+            if actual_state == expected_state:
+                repair_plan.status = PlanStatus.SUCCESS
+                repair_plan.save(update_fields=['status', 'updated_at'])
+
+                msg = (
+                    f"Pre-execution state inspection: Downstream system '{repair_plan.target_system}' state is already '{actual_state}'. "
+                    f"Repair action '{repair_plan.action}' idempotently satisfied without duplicate mutation."
+                )
+
+                execution_log = RepairExecutionLog.objects.create(
+                    repair_plan=repair_plan,
+                    executed_by=executed_by,
+                    attempt_number=attempt_number,
+                    idempotency_key=idempotency_key,
+                    status=ExecutionStatus.SUCCESS,
+                    already_satisfied=True,
+                    output_message=msg,
+                    completed_at=now
+                )
+
+                AuditLogger.log_event(
+                    event_type=AuditEventType.REPAIR_EXECUTED,
+                    actor=actor,
+                    employee=repair_plan.employee,
+                    system=repair_plan.target_system,
+                    action=repair_plan.action,
+                    previous_state=actual_state,
+                    new_state=expected_state,
+                    result='ALREADY_SATISFIED',
+                    correlation_id=correlation_id,
+                    additional_metadata={
+                        'plan_id': str(repair_plan.id),
+                        'attempt_number': attempt_number,
+                        'already_satisfied': True
+                    }
+                )
+
+                # Trigger Post-Repair Empirical Verification
+                from .verifier import PostRepairVerifier
+                verifier = PostRepairVerifier(state_collector=self.state_collector)
+                verifier.verify_repair(repair_plan, correlation_id=correlation_id)
+
+                logger.info(f"Pre-check idempotency satisfied for plan {repair_plan.id} on attempt #{attempt_number}.")
+                return execution_log
+
+            # 5. Record attempt log entry
             execution_log = RepairExecutionLog.objects.create(
                 repair_plan=repair_plan,
                 executed_by=executed_by,
                 attempt_number=attempt_number,
                 idempotency_key=idempotency_key,
-                status=ExecutionStatus.SUCCESS,
-                already_satisfied=True,
-                output_message=msg,
-                completed_at=now
+                status=ExecutionStatus.EXECUTING,
+                output_message=f"Attempt #{attempt_number}: Executing action '{repair_plan.action}' on system '{repair_plan.target_system}'..."
             )
 
-            AuditLogger.log_event(
-                event_type=AuditEventType.REPAIR_EXECUTED,
-                actor=actor,
-                employee=repair_plan.employee,
-                system=repair_plan.target_system,
-                action=repair_plan.action,
-                previous_state=actual_state,
-                new_state=expected_state,
-                result='ALREADY_SATISFIED',
-                correlation_id=correlation_id,
-                additional_metadata={
-                    'plan_id': str(repair_plan.id),
-                    'attempt_number': attempt_number,
-                    'already_satisfied': True
-                }
-            )
+            logger.info(f"Started execution attempt #{attempt_number} (Key: {idempotency_key}) for repair plan {repair_plan.id}.")
 
-            # Trigger Post-Repair Empirical Verification
-            from .verifier import PostRepairVerifier
-            verifier = PostRepairVerifier(state_collector=self.state_collector)
-            verifier.verify_repair(repair_plan, correlation_id=correlation_id)
-
-            logger.info(f"Pre-check idempotency satisfied for plan {repair_plan.id} on attempt #{attempt_number}.")
-            return execution_log
-
-        # 4. Update plan status to EXECUTING
-        repair_plan.status = PlanStatus.EXECUTING
-        repair_plan.save(update_fields=['status', 'updated_at'])
-
-        # 5. Record attempt log entry
-        execution_log = RepairExecutionLog.objects.create(
-            repair_plan=repair_plan,
-            executed_by=executed_by,
-            attempt_number=attempt_number,
-            idempotency_key=idempotency_key,
-            status=ExecutionStatus.EXECUTING,
-            output_message=f"Attempt #{attempt_number}: Executing action '{repair_plan.action}' on system '{repair_plan.target_system}'..."
-        )
-
-        logger.info(f"Started execution attempt #{attempt_number} (Key: {idempotency_key}) for repair plan {repair_plan.id}.")
-
-        # 6. Execute action via target connector abstraction
-        try:
+            # 6. Execute action via target connector abstraction
             connector = ConnectorRegistry.get_connector(repair_plan.target_system)
             result = connector.execute_action(
                 employee=repair_plan.employee,
@@ -285,10 +357,11 @@ class RepairExecutor:
 
         except ConnectorException as exc:
             completed_now = timezone.now()
-            execution_log.status = ExecutionStatus.FAILED
-            execution_log.error_details = str(exc)
-            execution_log.completed_at = completed_now
-            execution_log.save(update_fields=['status', 'error_details', 'completed_at'])
+            if execution_log:
+                execution_log.status = ExecutionStatus.FAILED
+                execution_log.error_details = str(exc)
+                execution_log.completed_at = completed_now
+                execution_log.save(update_fields=['status', 'error_details', 'completed_at'])
 
             logger.error(f"Attempt #{attempt_number} connector exception for plan {repair_plan.id}: {exc}")
 
@@ -338,17 +411,22 @@ class RepairExecutor:
                 repair_plan.save(update_fields=['status', 'updated_at'])
                 raise ExecutionException(f"Connector error after attempt #{attempt_number}: {exc}") from exc
 
+        except IneligiblePlanExecutionException:
+            # Re-raise plan eligibility exceptions directly without modifying state
+            raise
+
         except Exception as exc:
             completed_now = timezone.now()
-            execution_log.status = ExecutionStatus.FAILED
-            execution_log.error_details = f"Unexpected execution failure: {exc}"
-            execution_log.completed_at = completed_now
-            execution_log.save(update_fields=['status', 'error_details', 'completed_at'])
+            if execution_log:
+                execution_log.status = ExecutionStatus.FAILED
+                execution_log.error_details = f"Unexpected execution failure: {exc}"
+                execution_log.completed_at = completed_now
+                execution_log.save(update_fields=['status', 'error_details', 'completed_at'])
 
             repair_plan.status = PlanStatus.FAILED
             repair_plan.save(update_fields=['status', 'updated_at'])
 
-            logger.error(f"Unexpected error on attempt #{attempt_number} for plan {repair_plan.id}: {exc}")
+            logger.error(f"Unexpected error for plan {repair_plan.id}: {exc}")
 
             AuditLogger.log_event(
                 event_type=AuditEventType.EXECUTION_FAILED,

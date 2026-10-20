@@ -14,7 +14,7 @@ last verified against repo: 2026-08-28
 - **Decision**: Connect `ConnectedSystemsPage` to genuine backend state via existing `api.getCollectedStates()` (`GET /api/v1/reconciliation/state/`) and `api.getViolations()` (`GET /api/v1/reconciliation/violations/`), maintaining layout and keeping "Test Connectors" safely disabled.
 - **Why**: Replaces static mock data with real-time telemetry from active multi-system state collection and invariant rule evaluation, while preserving UI layout and zero backend alteration.
 
-## 2026-10-10 — UI Theme Unification & Login Page Redesign
-- **Decision**: Redesign the login page as a premium split-panel layout (decorative brand left panel + form right panel) with matching warm beige/lavender gradient identity from `landing.css`. Consolidate micro-animations (fadeInUp page transitions, card hover lifts, button press feedback, input focus glows) into `index.css` for unified use across all routes.
-- **Why**: The login page was the visual weakest link — a plain centered card that broke the premium feel established by the landing page and dashboard. The split layout with animated orbs, glassmorphic feature pills, and consistent gradient creates a seamless visual journey from landing → login → dashboard. Global micro-animations add the "alive" feeling that makes the enterprise UI feel responsive and polished.
+## 2026-10-19 — Phase 6: Final Regression, Security & Browser Acceptance Audit
+- **Decision**: Perform comprehensive, evidence-based acceptance audit across security guardrails, workflow contracts, concurrency controls, production configuration, and database engines without mutating business logic or deploying. Document findings in `docs/phase6_acceptance_report.md`.
+- **Why**: Ensures that all features across Phases 1 through 5 and the UI redesign remain completely intact, provably secure, and regression-free before final handoff.
 

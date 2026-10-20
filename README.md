@@ -74,9 +74,11 @@ reconcileOS/
 - **Backend Framework**: Python 3.14+ / Django 5.1.x
 - **API Engine**: Django REST Framework (DRF) 3.17.x
 - **Authentication**: SimpleJWT (JSON Web Tokens) & Django Session Auth
-- **Database**: SQLite (default for development), PostgreSQL-ready via `DB_ENGINE` configuration
+- **Database**: SQLite (default for development), PostgreSQL-ready via `psycopg` (v3) and `DATABASE_URL`/`DB_ENGINE`
+- **Static Assets & Web Serving**: WhiteNoise for asset compression & caching; Gunicorn WSGI for production
 - **CORS & Filters**: `django-cors-headers`, `django-filter`
-- **Testing**: Django Test Suite & DRF `APITestCase` (28 automated tests)
+- **Testing**: Django Test Suite & DRF `APITestCase` (107 automated tests)
+- **Deployment Documentation**: Complete production setup documented in [docs/deployment.md](docs/deployment.md)
 
 ---
 

@@ -30,99 +30,70 @@ export function Header() {
 
   return (
     <header className="header">
+      {/* Left: Understated Quick Search */}
       <div className="header-left">
-        <div className="search-wrapper" style={{ position: 'relative' }}>
-          <Search size={16} className="search-icon" />
+        <div className="header-search-wrapper">
+          <Search size={14} className="header-search-icon" />
           <input
             type="text"
-            className="search-input"
-            placeholder="Quick search..."
+            className="header-search-input"
+            placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            title="Local header search filter"
+            title="Search"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              style={{
-                position: 'absolute',
-                right: '10px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                padding: 0
-              }}
+              className="header-search-clear"
               title="Clear search"
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           )}
         </div>
-        <div className="env-pill">
-          <Terminal size={12} />
+
+        {/* Subtle Environment Indicator */}
+        <div className="header-env-indicator">
+          <Terminal size={12} className="header-env-icon" />
           <span>DEV / SIMULATION</span>
         </div>
       </div>
 
+      {/* Right: Notifications, User Identity & Quiet Logout */}
       <div className="header-right">
+        {/* Notification Button */}
         <div ref={popoverRef} style={{ position: 'relative' }}>
           <button
-            className="header-icon-btn"
+            className="header-notification-btn"
             title="System Notifications"
             onClick={() => setShowNotifications((prev) => !prev)}
             aria-expanded={showNotifications}
           >
-            <Bell size={18} />
-            <span className="notification-dot"></span>
+            <Bell size={17} />
+            <span className="header-notification-dot" />
           </button>
 
           {showNotifications && (
-            <div
-              style={{
-                position: 'absolute',
-                right: 0,
-                top: '40px',
-                width: '320px',
-                backgroundColor: 'var(--bg-surface)',
-                border: '1px solid var(--border-hairline)',
-                borderRadius: 'var(--radius-card)',
-                boxShadow: 'var(--shadow-floating)',
-                zIndex: 1000,
-                padding: '16px'
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '12px',
-                  borderBottom: '1px solid var(--border-hairline)',
-                  paddingBottom: '8px'
-                }}
-              >
+            <div className="header-notification-popover">
+              <div className="header-popover-header">
                 <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
                   System Notifications
                 </span>
                 <button
                   onClick={() => setShowNotifications(false)}
-                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
                 >
                   <X size={14} />
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', fontSize: '12px' }}>
                   <CheckCircle2 size={16} style={{ color: 'var(--status-healthy)', flexShrink: 0, marginTop: '2px' }} />
                   <div>
                     <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Integrity Daemon Active</div>
-                    <div style={{ color: 'var(--text-muted)' }}>Continuous monitoring scan frequency: Every 5 mins.</div>
+                    <div style={{ color: 'var(--text-muted)', marginTop: '2px' }}>Continuous monitoring cadence: Every 5 mins.</div>
                   </div>
                 </div>
 
@@ -131,31 +102,32 @@ export function Header() {
                     fontSize: '11px',
                     color: 'var(--text-muted)',
                     textAlign: 'center',
-                    paddingTop: '8px',
+                    paddingTop: '10px',
                     borderTop: '1px solid var(--border-hairline)'
                   }}
                 >
-                  No new unread security alerts.
+                  No unread critical alerts.
                 </div>
               </div>
             </div>
           )}
         </div>
 
+        <div className="header-divider" />
+
+        {/* User Identity & Logout */}
         {user ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div className="user-profile-chip">
-              <div className="user-avatar">
-                <ShieldCheck size={16} />
+          <div className="header-user-section">
+            <div className="header-identity-group">
+              <div className="header-identity-avatar">
+                <ShieldCheck size={15} />
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span className="user-name">{user.email || user.username}</span>
+              <div className="header-identity-text">
+                <span className="header-identity-email">{user.email || user.username}</span>
                 <span
-                  className="mono"
+                  className="header-identity-role"
                   style={{
-                    fontSize: '0.65rem',
-                    color: role === 'ADMIN' ? 'var(--status-danger)' : role === 'OPERATOR' ? 'var(--status-warning)' : 'var(--accent-blue)',
-                    fontWeight: 700
+                    color: role === 'ADMIN' ? 'var(--status-critical)' : role === 'OPERATOR' ? 'var(--status-warning)' : 'var(--accent-primary)'
                   }}
                 >
                   ROLE: {role}
@@ -164,17 +136,17 @@ export function Header() {
             </div>
 
             <button
-              className="btn btn-secondary"
-              style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+              className="header-logout-btn"
               onClick={logout}
               title="Sign Out"
             >
-              <LogOut size={14} /> Logout
+              <span>Logout</span>
+              <LogOut size={13} className="header-logout-icon" />
             </button>
           </div>
         ) : (
-          <div className="user-profile-chip">
-            <span className="user-name">Guest</span>
+          <div className="header-identity-text">
+            <span className="header-identity-email">Guest</span>
           </div>
         )}
       </div>

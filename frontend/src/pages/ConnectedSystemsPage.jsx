@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Server, Users, Shield, GitBranch, Cloud, MessageSquare, RefreshCw, AlertCircle } from 'lucide-react';
+import { Server, Users, Shield, GitBranch, Cloud, MessageSquare, RefreshCw, AlertCircle, Info } from 'lucide-react';
 import { StatusPill } from '../components/ui/StatusPill';
 import { Button } from '../components/ui/Button';
-import { mockConnectedSystems } from '../data/mockData';
 import { api } from '../services/api';
 
 const iconMap = {
@@ -13,10 +12,113 @@ const iconMap = {
   MessageSquare: MessageSquare
 };
 
+/**
+ * Authentic system specifications reflecting genuine backend implementations.
+ * Classification:
+ * - HR: Database fallback (internal Django Employee model, no live HRIS API)
+ * - VPN: Local simulation (VPNAccess ORM model with test failure modes, no live RADIUS/OpenVPN)
+ * - GitHub: Database fallback (REST API code exists; active fallback because GITHUB_ACCESS_TOKEN is not set)
+ * - Cloud IAM: Local simulation (CloudIAMAccess model with synthetic ARNs, no live AWS STS/IAM)
+ * - Slack: Local simulation (SlackAccount model with synthetic User IDs, no live SCIM/Slack API)
+ */
+const SYSTEM_SPECS = [
+  {
+    id: 'sys-hr',
+    key: 'hr',
+    name: 'HR Directory (System of Record)',
+    category: 'Identity & Employment Status',
+    mode: 'Database fallback',
+    modeVariant: 'neutral',
+    configStatus: 'Internal Django Employee model (SQLite / PostgreSQL)',
+    reachability: 'Not tested',
+    reachabilityVariant: 'neutral',
+    description: 'Internal database of record for employee identity, departments, and employment lifecycle transitions (ACTIVE, ON_LEAVE, TERMINATED).',
+    capabilities: [
+      'Source of truth for employee identity and lifecycle state',
+      'Provides termination triggers for drift reconciliation',
+      'No external HRIS (Workday / BambooHR) API integration configured'
+    ],
+    icon: 'Users'
+  },
+  {
+    id: 'sys-vpn',
+    key: 'vpn',
+    name: 'Enterprise VPN Gateway',
+    category: 'Network Access Control',
+    mode: 'Local simulation',
+    modeVariant: 'neutral',
+    configStatus: 'Local VPNAccess ORM model with test failure hooks',
+    reachability: 'Not tested',
+    reachabilityVariant: 'neutral',
+    description: 'Simulated downstream network access gateway with programmable transient timeout and connection drop simulation for testing.',
+    capabilities: [
+      'Enable and disable simulated VPN credentials',
+      'Inject simulated gateway timeouts and connection drops for testing',
+      'No live OpenVPN Management Interface or RADIUS server connected'
+    ],
+    icon: 'ShieldAlert'
+  },
+  {
+    id: 'sys-github',
+    key: 'github',
+    name: 'GitHub Enterprise',
+    category: 'Source Code & Organization Access',
+    mode: 'Database fallback',
+    modeVariant: 'warning',
+    configStatus: 'Unconfigured (GITHUB_ACCESS_TOKEN not set; target org: reconcileos-org)',
+    reachability: 'Not tested',
+    reachabilityVariant: 'neutral',
+    description: 'Manages developer organization memberships. Real REST API integration exists in code but currently runs in database fallback mode due to unconfigured token.',
+    capabilities: [
+      'Inspect and revoke organization membership',
+      'Live REST integration supported via GITHUB_ACCESS_TOKEN',
+      'Currently operating via local GitHubMembership database records'
+    ],
+    icon: 'GitBranch'
+  },
+  {
+    id: 'sys-cloud',
+    key: 'cloud',
+    name: 'Cloud IAM (AWS)',
+    category: 'Cloud Infrastructure & IAM Roles',
+    mode: 'Local simulation',
+    modeVariant: 'neutral',
+    configStatus: 'Local CloudIAMAccess ORM model with synthetic ARNs',
+    reachability: 'Not tested',
+    reachabilityVariant: 'neutral',
+    description: 'Simulated cloud IAM role manager with synthetic IAM ARNs (arn:aws:iam::123456789012:user/...) for role assignment and revocation.',
+    capabilities: [
+      'Assign and revoke simulated Cloud IAM roles (DEVELOPER, ADMIN, NO_ROLE)',
+      'Track cloud identity ARNs against employee records',
+      'No live AWS STS, IAM, or Cloud provider APIs connected'
+    ],
+    icon: 'Cloud'
+  },
+  {
+    id: 'sys-slack',
+    key: 'slack',
+    name: 'Slack Workspace',
+    category: 'Corporate Chat & Provisioning',
+    mode: 'Local simulation',
+    modeVariant: 'neutral',
+    configStatus: 'Local SlackAccount ORM model with synthetic User IDs',
+    reachability: 'Not tested',
+    reachabilityVariant: 'neutral',
+    description: 'Simulated corporate workspace account directory with synthetic Slack User IDs (U...) for account provisioning and deactivation.',
+    capabilities: [
+      'Activate and deactivate simulated Slack accounts',
+      'Track corporate communication provisioning state',
+      'No live Slack SCIM v2 or Web API integration connected'
+    ],
+    icon: 'MessageSquare'
+  }
+];
+
 export function ConnectedSystemsPage() {
-  const [systems, setSystems] = useState(mockConnectedSystems);
+  const [systems, setSystems] = useState(SYSTEM_SPECS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   const fetchSystemStates = async () => {
     setLoading(true);
@@ -53,8 +155,8 @@ export function ConnectedSystemsPage() {
         });
       };
 
-      const updatedSystems = mockConnectedSystems.map((baseSys) => {
-        const sysKey = (baseSys.key || '').toLowerCase();
+      const updated = SYSTEM_SPECS.map((baseSys) => {
+        const sysKey = baseSys.key;
         let monitoredCount = 0;
         let driftCount = 0;
 
@@ -76,20 +178,18 @@ export function ConnectedSystemsPage() {
           }
         }
 
-        const isDrift = driftCount > 0;
-
         return {
           ...baseSys,
-          activeAccounts: monitoredCount,
+          monitoredAccounts: monitoredCount,
           driftCount,
-          status: isDrift ? 'DRIFT_DETECTED' : 'HEALTHY',
-          lastChecked: 'Just now'
+          driftStatus: driftCount > 0 ? 'DRIFT_DETECTED' : 'HEALTHY'
         };
       });
 
-      setSystems(updatedSystems);
+      setSystems(updated);
+      setLastUpdated(new Date().toLocaleTimeString());
     } catch (err) {
-      console.error('Failed to fetch connected systems state:', err);
+      console.error('Failed to fetch connected systems telemetry:', err);
       setError(err.message || 'Failed to load connected systems state.');
     } finally {
       setLoading(false);
@@ -102,40 +202,86 @@ export function ConnectedSystemsPage() {
 
   return (
     <div className="page-content">
-      <div className="page-header">
+      {/* Editorial Header */}
+      <div className="page-header" style={{ marginBottom: '40px' }}>
         <div>
+          <div className="page-eyebrow">
+            <span className="page-eyebrow-dot" />
+            Infrastructure Integrations
+          </div>
           <h1 className="page-title">
-            <span>Connected Systems</span>
+            <span>Connected Systems & Integrations</span>
           </h1>
           <p className="page-subtitle">
-            Downstream target application gateways and telemetry connectors
+            Downstream target application gateways, connection modes, and honest integration telemetry across enterprise surfaces.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+          {lastUpdated && (
+            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }} className="font-mono">
+              Synced: {lastUpdated}
+            </span>
+          )}
           <Button
             variant="secondary"
             icon={RefreshCw}
             onClick={fetchSystemStates}
             disabled={loading}
           >
-            {loading ? 'Refreshing...' : 'Refresh'}
+            {loading ? 'Refreshing...' : 'Refresh Telemetry'}
           </Button>
-          <Button
-            variant="secondary"
-            disabled={true}
-            title="Gateway connector test API endpoint is not implemented in the backend"
-          >
-            Test Connectors (Unavailable)
-          </Button>
+        </div>
+      </div>
+
+      {/* Integration Truthfulness Notice */}
+      <div
+        style={{
+          marginBottom: '40px',
+          padding: '24px 28px',
+          borderRadius: '16px',
+          backgroundColor: '#FFFDF9',
+          border: '1px solid rgba(120, 101, 165, 0.18)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+          display: 'flex',
+          gap: '18px',
+          alignItems: 'flex-start'
+        }}
+      >
+        <div
+          style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--accent-primary-light)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--accent-primary)',
+            flexShrink: 0,
+            marginTop: '2px'
+          }}
+        >
+          <Info size={18} />
+        </div>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)', marginBottom: '6px' }}>
+            Integration Reality & Governance Notice
+          </div>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.6' }}>
+            ReconcileOS distinguishes between <strong>Live integrations</strong> (authenticated third-party APIs),
+            <strong> Local simulations</strong> (ORM models with programmable failure modes), and
+            <strong> Database fallbacks</strong> (unconfigured integrations defaulting to local database state).
+            Successful database reads do not imply live external reachability.
+          </div>
         </div>
       </div>
 
       {error && (
         <div
           style={{
-            marginBottom: '20px',
-            padding: '12px 18px',
-            borderRadius: 'var(--radius-btn)',
+            marginBottom: '32px',
+            padding: '16px 22px',
+            borderRadius: '12px',
             backgroundColor: 'var(--status-critical-bg)',
             border: '1px solid var(--status-critical-border)',
             color: 'var(--status-critical)',
@@ -143,63 +289,129 @@ export function ConnectedSystemsPage() {
             fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '10px'
           }}
         >
-          <AlertCircle size={16} />
+          <AlertCircle size={18} />
           <span>{error}</span>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+      {/* Systems Editorial Directory */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {systems.map((sys) => {
           const Icon = iconMap[sys.icon] || Server;
-          const isDrift = sys.status === 'DRIFT_DETECTED';
+          const isDrift = sys.driftStatus === 'DRIFT_DETECTED';
 
           return (
-            <div key={sys.id} className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div
-                      style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: 'var(--radius-btn)',
-                        backgroundColor: 'var(--accent-primary-light)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'var(--accent-primary)'
-                      }}
-                    >
-                      <Icon size={18} />
-                    </div>
-                    <div>
-                      <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{sys.name}</h4>
-                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{sys.type}</div>
-                    </div>
+            <div
+              key={sys.id}
+              style={{
+                backgroundColor: '#FFFDF9',
+                borderRadius: '16px',
+                border: '1px solid rgba(120, 101, 165, 0.12)',
+                padding: '32px 36px',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '24px'
+              }}
+            >
+              {/* Header Row */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div
+                    style={{
+                      width: '46px',
+                      height: '46px',
+                      borderRadius: '12px',
+                      backgroundColor: 'var(--accent-primary-light)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--accent-primary)',
+                      flexShrink: 0
+                    }}
+                  >
+                    <Icon size={22} />
                   </div>
-                  <StatusPill status={isDrift ? 'warning' : 'healthy'} label={isDrift ? 'Drift' : 'Healthy'} size="small" />
+                  <div>
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '3px' }}>
+                      {sys.name}
+                    </h3>
+                    <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{sys.category}</div>
+                  </div>
                 </div>
 
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.4' }}>
-                  {sys.description}
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <StatusPill
+                    status={sys.modeVariant}
+                    label={sys.mode}
+                    size="small"
+                  />
+                  <StatusPill
+                    status={isDrift ? 'warning' : 'healthy'}
+                    label={isDrift ? `Drift Detected (${sys.driftCount})` : 'Compliant'}
+                    size="small"
+                  />
+                </div>
               </div>
 
-              <div style={{ borderTop: '1px solid var(--border-hairline)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Protocol:</span>
-                  <span className="font-mono" style={{ color: 'var(--text-primary)' }}>{sys.protocol}</span>
+              {/* Description */}
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0, maxWidth: '800px' }}>
+                {sys.description}
+              </p>
+
+              {/* Capabilities and Specs Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', paddingTop: '8px' }}>
+                <div
+                  style={{
+                    padding: '20px 24px',
+                    borderRadius: '12px',
+                    backgroundColor: 'var(--bg-base)',
+                    border: '1px solid var(--border-hairline)'
+                  }}
+                >
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
+                    Implementation Capabilities
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px', lineHeight: '1.5' }}>
+                    {sys.capabilities.map((cap, i) => (
+                      <li key={i}>{cap}</li>
+                    ))}
+                  </ul>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Latency:</span>
-                  <span className="font-mono" style={{ color: 'var(--text-primary)' }}>{sys.latency}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Monitored Accounts:</span>
-                  <span className="font-mono" style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>{sys.activeAccounts} accounts</span>
+
+                <div
+                  style={{
+                    padding: '20px 24px',
+                    borderRadius: '12px',
+                    backgroundColor: 'var(--bg-base)',
+                    border: '1px solid var(--border-hairline)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    gap: '14px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Configuration:</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-primary)', textAlign: 'right', maxWidth: '240px' }} className="font-mono">
+                      {sys.configStatus}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>External Reachability:</span>
+                    <StatusPill status="neutral" label="Not tested" size="small" />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Monitored Accounts:</span>
+                    <span className="font-mono" style={{ fontWeight: 700, fontSize: '14px', color: 'var(--accent-primary)' }}>
+                      {sys.monitoredAccounts !== undefined ? `${sys.monitoredAccounts} records` : '—'}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

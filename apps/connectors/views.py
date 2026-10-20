@@ -4,11 +4,12 @@ API Views and ViewSets for Simulated VPN Connector.
 
 import uuid
 from django.http import Http404
-from rest_framework import viewsets, status, filters
+from rest_framework import viewsets, status, filters, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
+from apps.accounts.permissions import IsAdminUserRole, IsViewerUserRole
 from apps.employees.models import Employee
 from .models import VPNAccess, VPNAccessStatus
 from .serializers import VPNAccessSerializer
@@ -40,6 +41,18 @@ class VPNAccessViewSet(viewsets.ModelViewSet):
     search_fields = ['employee__full_name', 'employee__email', 'employee__department']
     ordering_fields = ['created_at', 'updated_at', 'status', 'employee__full_name']
     ordering = ['-updated_at']
+
+    def get_permissions(self):
+        """
+        Enforce ReconcileOS RBAC least-privilege policy:
+        - Mutations (create, update, partial_update, destroy, enable, disable) and
+          any non-safe HTTP methods require ADMIN role.
+        - Read actions (list, retrieve, HEAD, OPTIONS) require authenticated user (VIEWER, OPERATOR, ADMIN).
+        - Unauthenticated requests are rejected with HTTP 401.
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'enable', 'disable'] or self.request.method not in permissions.SAFE_METHODS:
+            return [IsAdminUserRole()]
+        return [IsViewerUserRole()]
 
     def get_employee_or_404(self, employee_id):
         """

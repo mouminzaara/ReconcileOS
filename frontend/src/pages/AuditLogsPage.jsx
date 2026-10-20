@@ -74,40 +74,49 @@ export function AuditLogsPage() {
 
   return (
     <div className="page-content">
-      <div className="page-header">
+      {/* Editorial Header */}
+      <div className="page-header" style={{ marginBottom: '40px' }}>
         <div>
+          <div className="page-eyebrow">
+            <span className="page-eyebrow-dot" />
+            Cryptographic Chain
+          </div>
           <h1 className="page-title">
-            <span>Audit Log</span>
+            <span>Audit Stream & Tamper-Evidence</span>
           </h1>
           <p className="page-subtitle">
-            Cryptographically chained, tamper-evident record of identity reconciliation events
+            Cryptographically chained SHA-256 event trail guaranteeing non-repudiation of all identity decisions.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <Button
             variant="primary"
             icon={ShieldCheck}
             onClick={handleVerifyChain}
             disabled={verifying || loading}
           >
-            {verifying ? 'Verifying Integrity...' : 'Verify Integrity'}
+            {verifying ? 'Verifying Integrity...' : 'Verify Cryptographic Chain'}
           </Button>
           <Button variant="secondary" icon={RefreshCw} onClick={fetchAuditLogs} disabled={loading || verifying}>
-            Refresh Logs
+            Refresh
           </Button>
-          <Button
-            variant={activeTab === 'TIMELINE' ? 'primary' : 'secondary'}
-            onClick={() => setActiveTab('TIMELINE')}
-          >
-            Timeline Stream
-          </Button>
-          <Button
-            variant={activeTab === 'TABLE' ? 'primary' : 'secondary'}
-            onClick={() => setActiveTab('TABLE')}
-          >
-            Data Grid View
-          </Button>
+          <div style={{ display: 'flex', gap: '6px', backgroundColor: 'var(--bg-base)', padding: '4px', borderRadius: '9999px', border: '1px solid var(--border-hairline)' }}>
+            <Button
+              variant={activeTab === 'TIMELINE' ? 'primary' : 'ghost'}
+              size="small"
+              onClick={() => setActiveTab('TIMELINE')}
+            >
+              Timeline
+            </Button>
+            <Button
+              variant={activeTab === 'TABLE' ? 'primary' : 'ghost'}
+              size="small"
+              onClick={() => setActiveTab('TABLE')}
+            >
+              Data Grid
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -115,9 +124,9 @@ export function AuditLogsPage() {
         verificationResult.error ? (
           <div
             style={{
-              marginBottom: '20px',
-              padding: '12px 18px',
-              borderRadius: 'var(--radius-btn)',
+              marginBottom: '32px',
+              padding: '16px 22px',
+              borderRadius: '12px',
               backgroundColor: 'var(--status-critical-bg)',
               border: '1px solid var(--status-critical-border)',
               color: 'var(--status-critical)',
@@ -125,37 +134,38 @@ export function AuditLogsPage() {
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '10px'
             }}
           >
-            <AlertCircle size={16} />
+            <AlertCircle size={18} />
             <span>Verification Error: {verificationResult.message}</span>
           </div>
         ) : verificationResult.isValid ? (
           <div
             style={{
-              marginBottom: '20px',
-              padding: '14px 18px',
-              borderRadius: 'var(--radius-btn)',
-              backgroundColor: 'var(--status-healthy-bg)',
+              marginBottom: '32px',
+              padding: '20px 24px',
+              borderRadius: '16px',
+              backgroundColor: '#FFFDF9',
               border: '1px solid var(--status-healthy-border)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
               color: 'var(--status-healthy)',
               fontSize: '13px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '6px'
+              gap: '8px'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
-              <ShieldCheck size={18} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 700, fontSize: '15px' }}>
+              <ShieldCheck size={20} />
               <span>{verificationResult.message}</span>
             </div>
             {verificationResult.details && (
-              <div style={{ fontSize: '12px', opacity: 0.9, marginLeft: '26px' }}>
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginLeft: '30px' }}>
                 Verified {verificationResult.details.verified_records} of {verificationResult.details.total_records} record(s) intact.
                 {verificationResult.details.head_hash && (
-                  <span className="font-mono" style={{ marginLeft: '6px', fontSize: '11px' }}>
-                    (Head SHA-256: {verificationResult.details.head_hash.substring(0, 16)}...)
+                  <span className="font-mono" style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--accent-primary)' }}>
+                    (Head SHA-256: {verificationResult.details.head_hash.substring(0, 20)}...)
                   </span>
                 )}
               </div>
@@ -164,24 +174,24 @@ export function AuditLogsPage() {
         ) : (
           <div
             style={{
-              marginBottom: '20px',
-              padding: '14px 18px',
-              borderRadius: 'var(--radius-btn)',
+              marginBottom: '32px',
+              padding: '20px 24px',
+              borderRadius: '16px',
               backgroundColor: 'var(--status-critical-bg)',
               border: '1px solid var(--status-critical-border)',
               color: 'var(--status-critical)',
               fontSize: '13px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '6px'
+              gap: '8px'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
-              <ShieldAlert size={18} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 700, fontSize: '15px' }}>
+              <ShieldAlert size={20} />
               <span>{verificationResult.message}</span>
             </div>
             {verificationResult.details && (
-              <div style={{ fontSize: '12px', opacity: 0.9, marginLeft: '26px' }}>
+              <div style={{ fontSize: '13px', opacity: 0.9, marginLeft: '30px' }}>
                 Reason: {verificationResult.details.reason} (Tampered Record ID: {verificationResult.details.tampered_record_id || 'Unknown'})
               </div>
             )}
@@ -192,33 +202,50 @@ export function AuditLogsPage() {
       {error && (
         <div
           style={{
-            marginBottom: '20px',
-            padding: '12px 16px',
-            borderRadius: 'var(--radius-btn)',
+            marginBottom: '32px',
+            padding: '16px 22px',
+            borderRadius: '12px',
             backgroundColor: 'var(--status-critical-bg)',
             border: '1px solid var(--status-critical-border)',
             color: 'var(--status-critical)',
             fontSize: '13px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '10px'
           }}
         >
-          <AlertCircle size={16} />
+          <AlertCircle size={18} />
           <span>{error}</span>
         </div>
       )}
 
       {loading ? (
-        <div className="card" style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          Loading audit logs from backend...
+        <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+          Loading cryptographic audit chain...
         </div>
       ) : logs.length === 0 ? (
-        <div className="card" style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+        <div
+          style={{
+            padding: '60px 24px',
+            textAlign: 'center',
+            backgroundColor: '#FFFDF9',
+            borderRadius: '16px',
+            border: '1px solid rgba(120, 101, 165, 0.12)',
+            color: 'var(--text-muted)'
+          }}
+        >
           No audit log records available.
         </div>
       ) : activeTab === 'TIMELINE' ? (
-        <div className="card" style={{ padding: '24px 32px' }}>
+        <div
+          style={{
+            backgroundColor: '#FFFDF9',
+            borderRadius: '16px',
+            border: '1px solid rgba(120, 101, 165, 0.12)',
+            padding: '40px 48px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)'
+          }}
+        >
           {logs.map((log, idx) => (
             <TimelineEntry
               key={log.id}
@@ -231,39 +258,39 @@ export function AuditLogsPage() {
           ))}
         </div>
       ) : (
-        <div className="plain-divided-container">
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+        <div className="editorial-table-container">
+          <table className="editorial-table">
             <thead>
-              <tr style={{ backgroundColor: 'var(--bg-base)', borderBottom: '1px solid var(--border-hairline)' }}>
-                <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>Log ID</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>Timestamp</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>Event Type</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>Actor</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>Target</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>System</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>Outcome</th>
+              <tr>
+                <th>Log ID</th>
+                <th>Timestamp</th>
+                <th>Event Type</th>
+                <th>Actor</th>
+                <th>Target</th>
+                <th>System</th>
+                <th>Outcome</th>
               </tr>
             </thead>
             <tbody>
               {logs.map((log) => (
-                <tr key={log.id} style={{ borderBottom: '1px solid var(--border-hairline)' }}>
-                  <td className="font-mono" style={{ padding: '12px 16px', color: 'var(--accent-primary)', fontWeight: 600, fontSize: '12px' }}>
+                <tr key={log.id}>
+                  <td className="font-mono" style={{ color: 'var(--accent-primary)', fontWeight: 600, fontSize: '13px' }}>
                     {log.id}
                   </td>
-                  <td className="font-mono" style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  <td className="font-mono" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                     {log.timestamp}
                   </td>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                     {log.eventType}
                   </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{log.actor}</td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{log.target}</td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, padding: '2px 8px', borderRadius: 'var(--radius-pill)', backgroundColor: 'var(--accent-primary-light)', color: 'var(--accent-primary)' }}>
+                  <td style={{ color: 'var(--text-secondary)' }}>{log.actor}</td>
+                  <td style={{ color: 'var(--text-secondary)' }}>{log.target}</td>
+                  <td>
+                    <span style={{ fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '9999px', backgroundColor: 'var(--accent-primary-light)', color: 'var(--accent-primary)' }}>
                       {log.system}
                     </span>
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
+                  <td>
                     <StatusPill status={log.status === 'CRITICAL' || log.status === 'FAILURE' ? 'critical' : log.status === 'SUCCESS' ? 'healthy' : 'warning'} label={log.status} size="small" />
                   </td>
                 </tr>

@@ -2,11 +2,13 @@
 API Views for ReconcileOS Repair Planning, Execution & Verification Engine.
 """
 
+import uuid
 from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
 
+from apps.employees.models import Employee
 from .models import RepairPlan
 from .planner import RepairPlanner
 from .executor import RepairExecutor, IneligiblePlanExecutionException, ExecutionException
@@ -39,10 +41,33 @@ class RepairPlanViewSet(viewsets.ReadOnlyModelViewSet):
     def generate_plans(self, request):
         """
         Action endpoint to generate repair plans for open integrity violations.
+        Requires valid employee_id.
         """
         employee_id = request.data.get('employee_id') or request.query_params.get('employee_id')
+        if not employee_id:
+            return Response({
+                "status": "error",
+                "message": "Missing required parameter 'employee_id'."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate employee_id format
+        try:
+            val_uuid = uuid.UUID(str(employee_id))
+        except (ValueError, AttributeError, TypeError):
+            return Response({
+                "status": "error",
+                "message": f"Invalid employee_id format: '{employee_id}'. Must be a valid UUID."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify employee exists in database
+        if not Employee.objects.filter(id=val_uuid).exists():
+            return Response({
+                "status": "error",
+                "message": f"Employee with ID '{employee_id}' not found."
+            }, status=status.HTTP_404_NOT_FOUND)
+
         planner = RepairPlanner()
-        plans = planner.plan_all_open_violations(employee_id=employee_id)
+        plans = planner.plan_all_open_violations(employee_id=str(val_uuid))
 
         serializer = self.get_serializer(plans, many=True)
         return Response({

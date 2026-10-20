@@ -22,7 +22,7 @@ export function StatCard({
     critical: 'var(--status-critical)',
     warning: 'var(--status-warning)',
     healthy: 'var(--status-healthy)',
-    neutral: 'var(--status-neutral)'
+    neutral: 'var(--text-muted)'
   };
 
   const accentColor = accentColorMap[status] || accentColorMap.neutral;
@@ -33,56 +33,39 @@ export function StatCard({
       style={{
         position: 'relative',
         overflow: 'hidden',
-        paddingTop: '22px'
+        padding: '20px 20px 16px',
       }}
     >
-      {/* Top accent bar */}
+      {/* Subtle left accent stripe */}
       <div
         style={{
           position: 'absolute',
           top: 0,
           left: 0,
-          right: 0,
-          height: '4px',
-          backgroundColor: accentColor
+          width: '3px',
+          height: '100%',
+          backgroundColor: accentColor,
+          opacity: 0.5
         }}
       />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+        <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
           {title}
         </span>
         {Icon && (
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: 'var(--radius-btn)',
-              backgroundColor: 'var(--accent-primary-light)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--accent-primary)'
-            }}
-          >
-            <Icon size={16} />
-          </div>
+          <Icon size={15} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
         )}
       </div>
 
-      <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+      <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2, letterSpacing: '-0.02em', marginTop: '4px' }}>
         {value}
       </div>
 
       {(statusLabel || subtext) && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', fontSize: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '11px' }}>
           {statusLabel && (
-            <span
-              style={{
-                fontWeight: 600,
-                color: accentColor
-              }}
-            >
+            <span style={{ fontWeight: 600, color: accentColor }}>
               {statusLabel}
             </span>
           )}

@@ -24,23 +24,9 @@ export function ActivityRow({
         transition: 'background-color 0.15s ease'
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
         {Icon && (
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: 'var(--radius-btn)',
-              backgroundColor: 'var(--accent-primary-light)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--accent-primary)',
-              flexShrink: 0
-            }}
-          >
-            <Icon size={16} />
-          </div>
+          <Icon size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
         )}
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>

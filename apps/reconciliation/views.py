@@ -135,9 +135,21 @@ class ContinuousMonitorView(APIView):
         employee_id = request.data.get('employee_id')
         auto_approve = request.data.get('auto_approve', False)
 
+        if auto_approve:
+            return Response(
+                {
+                    "status": "error",
+                    "message": (
+                        "Automatic approval is disabled by governance policy. "
+                        "ReconcileOS requires mandatory human-in-the-loop approval before repair execution."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         monitor = ContinuousMonitor()
         summary = monitor.run_monitoring_cycle(
             employee_id=employee_id,
-            auto_approve_policy=auto_approve
+            auto_approve_policy=False
         )
         return Response(summary, status=status.HTTP_200_OK)

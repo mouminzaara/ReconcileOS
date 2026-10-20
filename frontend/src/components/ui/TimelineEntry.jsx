@@ -50,19 +50,19 @@ export function TimelineEntry({
       </div>
 
       {/* Content column */}
-      <div style={{ paddingBottom: isLast ? '0' : '20px', flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+      <div style={{ paddingBottom: isLast ? '0' : '32px', flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
             {title}
           </span>
           {timestamp && (
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }} className="font-mono">
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }} className="font-mono">
               {timestamp}
             </span>
           )}
         </div>
         {description && (
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px', lineHeight: '1.6' }}>
             {description}
           </div>
         )}
