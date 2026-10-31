@@ -25,15 +25,15 @@ export function Button({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '8px',
+    gap: '6px',
     borderRadius: 'var(--radius-btn)',
-    fontSize: size === 'small' ? '12.5px' : '13.5px',
-    fontWeight: 600,
+    fontSize: size === 'small' ? '12px' : '13px',
+    fontWeight: 500,
     cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.55 : 1,
-    transition: 'all 0.2s ease',
+    opacity: disabled ? 0.5 : 1,
+    transition: 'all 0.15s ease',
     border: '1px solid transparent',
-    padding: size === 'small' ? '6px 14px' : '9px 20px',
+    padding: size === 'small' ? '5px 12px' : '7px 16px',
     outline: 'none',
     lineHeight: 1.4,
     fontFamily: 'inherit',
@@ -45,22 +45,23 @@ export function Button({
   if (isPrimary) {
     variantStyles = {
       backgroundColor: 'var(--accent-primary)',
-      color: '#FFFDF9',
+      color: '#FFFFFF',
       borderColor: 'var(--accent-primary)',
-      boxShadow: '0 2px 10px rgba(120, 101, 165, 0.25)'
+      boxShadow: '0 1px 2px rgba(31, 25, 44, 0.08)'
     };
   } else if (isSecondary) {
     variantStyles = {
       backgroundColor: 'var(--bg-surface)',
       color: 'var(--text-primary)',
       borderColor: 'var(--border-hairline)',
-      boxShadow: '0 1px 4px rgba(51, 47, 58, 0.04)'
+      boxShadow: '0 1px 2px rgba(31, 25, 44, 0.04)'
     };
   } else if (isDanger) {
     variantStyles = {
       backgroundColor: 'var(--status-critical)',
       color: '#FFFFFF',
-      borderColor: 'var(--status-critical)'
+      borderColor: 'var(--status-critical)',
+      boxShadow: '0 1px 2px rgba(220, 38, 38, 0.15)'
     };
   } else if (isGhost) {
     variantStyles = {

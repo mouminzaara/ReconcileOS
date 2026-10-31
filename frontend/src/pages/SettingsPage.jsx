@@ -52,28 +52,28 @@ export function SettingsPage() {
         <div
           style={{
             position: 'fixed',
-            bottom: '32px',
-            right: '32px',
+            bottom: '24px',
+            right: '24px',
             backgroundColor: 'var(--accent-primary)',
             color: '#FFFFFF',
-            padding: '14px 24px',
-            borderRadius: '9999px',
-            boxShadow: '0 8px 30px rgba(120, 101, 165, 0.25)',
+            padding: '10px 18px',
+            borderRadius: 'var(--radius-btn)',
+            boxShadow: 'var(--shadow-floating)',
             zIndex: 1000,
             fontSize: '13px',
-            fontWeight: 600,
+            fontWeight: 500,
             display: 'flex',
             alignItems: 'center',
-            gap: '10px'
+            gap: '8px'
           }}
         >
-          <Check size={18} />
+          <Check size={16} />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Editorial Header */}
-      <div className="page-header" style={{ marginBottom: '40px' }}>
+      <div className="page-header" style={{ marginBottom: '28px' }}>
         <div>
           <div className="page-eyebrow">
             <span className="page-eyebrow-dot" />
@@ -94,22 +94,22 @@ export function SettingsPage() {
       {/* Governance & Architecture Notice */}
       <div
         style={{
-          marginBottom: '40px',
-          padding: '24px 28px',
-          borderRadius: '16px',
-          backgroundColor: '#FFFDF9',
-          border: '1px solid rgba(120, 101, 165, 0.18)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+          marginBottom: '28px',
+          padding: '18px 22px',
+          borderRadius: 'var(--radius-card)',
+          backgroundColor: 'var(--bg-surface)',
+          border: '1px solid var(--border-hairline)',
+          boxShadow: 'var(--shadow-card)',
           display: 'flex',
-          gap: '18px',
+          gap: '16px',
           alignItems: 'flex-start'
         }}
       >
         <div
           style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
+            borderRadius: 'var(--radius-btn)',
             backgroundColor: 'var(--accent-primary-light)',
             display: 'flex',
             alignItems: 'center',
@@ -119,13 +119,13 @@ export function SettingsPage() {
             marginTop: '2px'
           }}
         >
-          <Info size={18} />
+          <Info size={16} />
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)', marginBottom: '6px' }}>
+          <div style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text-primary)', marginBottom: '4px' }}>
             Settings Reality & Persistence Notice
           </div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.6' }}>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.5' }}>
             ReconcileOS separates <strong>browser-local preferences</strong> (stored solely in your browser's localStorage)
             from <strong>server-enforced security policies</strong> (immutable audit trails, RBAC, and mandatory human approval).
             Local preferences do not control background daemon schedules or bypass server governance.
@@ -133,15 +133,15 @@ export function SettingsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {/* 1. Client Scan Preference */}
         <section
           style={{
-            backgroundColor: '#FFFDF9',
-            borderRadius: '16px',
-            border: '1px solid rgba(120, 101, 165, 0.12)',
-            padding: '32px 36px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)'
+            backgroundColor: 'var(--bg-surface)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px solid var(--border-hairline)',
+            padding: '24px 28px',
+            boxShadow: 'var(--shadow-card)'
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
@@ -174,7 +174,7 @@ export function SettingsPage() {
             <select
               id="scan-cadence-select"
               className="input-base"
-              style={{ width: '100%', padding: '12px 16px', fontSize: '14px', borderRadius: '9999px', backgroundColor: 'var(--bg-base)' }}
+              style={{ width: '100%', height: '38px', fontSize: '13px', borderRadius: 'var(--radius-input)', backgroundColor: 'var(--bg-surface)' }}
               value={scanFrequency}
               onChange={(e) => setScanFrequency(e.target.value)}
             >
@@ -187,18 +187,18 @@ export function SettingsPage() {
 
           <div
             style={{
-              padding: '16px 20px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--bg-base)',
+              padding: '14px 18px',
+              borderRadius: 'var(--radius-card)',
+              backgroundColor: '#F8F5FD',
               border: '1px solid var(--border-hairline)',
               fontSize: '13px',
               color: 'var(--text-secondary)',
-              lineHeight: '1.6'
+              lineHeight: '1.5'
             }}
           >
             <strong>Implementation Status:</strong> No automated background scheduler daemon (Celery / cron) is currently running
             in this development deployment. Audit cycles are executed on demand via the Dashboard ("Run Reconciliation Audit") or via backend CLI:
-            <code style={{ marginLeft: '6px', padding: '3px 8px', backgroundColor: '#FFFFFF', border: '1px solid var(--border-hairline)', borderRadius: '6px' }}>
+            <code style={{ marginLeft: '6px', padding: '2px 6px', backgroundColor: '#FFFFFF', border: '1px solid var(--border-hairline)', borderRadius: '4px' }}>
               python manage.py run_continuous_monitor
             </code>.
           </div>
@@ -207,19 +207,19 @@ export function SettingsPage() {
         {/* 2. Self-Healing & Governance Enforcement */}
         <section
           style={{
-            backgroundColor: '#FFFDF9',
-            borderRadius: '16px',
-            border: '1px solid rgba(120, 101, 165, 0.12)',
-            padding: '32px 36px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)'
+            backgroundColor: 'var(--bg-surface)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px solid var(--border-hairline)',
+            padding: '24px 28px',
+            boxShadow: 'var(--shadow-card)'
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
                 Remediation Governance Policy
               </h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
                 Policy governing the execution of automated drift remediation repair plans
               </p>
             </div>
@@ -247,10 +247,10 @@ export function SettingsPage() {
                 className="input-base"
                 style={{
                   width: '100%',
-                  padding: '12px 16px',
-                  fontSize: '14px',
-                  borderRadius: '9999px',
-                  backgroundColor: 'var(--bg-base)',
+                  height: '38px',
+                  fontSize: '13px',
+                  borderRadius: 'var(--radius-input)',
+                  backgroundColor: 'var(--bg-surface)',
                   cursor: 'not-allowed',
                   opacity: 0.8
                 }}
@@ -259,19 +259,19 @@ export function SettingsPage() {
               >
                 <option value="STRICT">Strict Human Approval (Mandatory for ALL repairs)</option>
               </select>
-              <Lock size={16} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <Lock size={15} style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             </div>
           </div>
 
           <div
             style={{
-              padding: '16px 20px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--bg-base)',
+              padding: '14px 18px',
+              borderRadius: 'var(--radius-card)',
+              backgroundColor: '#F8F5FD',
               border: '1px solid var(--status-healthy-border)',
               fontSize: '13px',
               color: 'var(--text-secondary)',
-              lineHeight: '1.6'
+              lineHeight: '1.5'
             }}
           >
             <strong style={{ color: 'var(--status-healthy)' }}>Backend Enforced (Phase 2A):</strong> The ReconcileOS backend strictly enforces human-in-the-loop review.
@@ -283,19 +283,19 @@ export function SettingsPage() {
         {/* 3. Live Django REST API Core Binding */}
         <section
           style={{
-            backgroundColor: '#FFFDF9',
-            borderRadius: '16px',
-            border: '1px solid rgba(120, 101, 165, 0.12)',
-            padding: '32px 36px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)'
+            backgroundColor: 'var(--bg-surface)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px solid var(--border-hairline)',
+            padding: '24px 28px',
+            boxShadow: 'var(--shadow-card)'
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
                 Backend REST API Binding
               </h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
                 Target Django REST Framework core endpoint and verified service health
               </p>
             </div>
@@ -309,7 +309,7 @@ export function SettingsPage() {
             </Button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '16px' }}>
             <div>
               <label
                 htmlFor="api-endpoint-input"
@@ -329,7 +329,7 @@ export function SettingsPage() {
                 id="api-endpoint-input"
                 type="text"
                 className="input-base font-mono"
-                style={{ width: '100%', fontSize: '13px', padding: '12px 16px', borderRadius: '9999px', backgroundColor: 'var(--bg-base)' }}
+                style={{ width: '100%', fontSize: '12.5px', height: '38px', borderRadius: 'var(--radius-input)', backgroundColor: '#F8F5FD' }}
                 defaultValue="http://127.0.0.1:8000/api/v1/"
                 readOnly
               />
@@ -349,7 +349,7 @@ export function SettingsPage() {
               >
                 Live Health Verification
               </label>
-              <div style={{ display: 'flex', alignItems: 'center', height: '44px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', height: '38px' }}>
                 {healthLoading ? (
                   <StatusPill status="neutral" label="Probing /api/v1/health/..." />
                 ) : healthData ? (
@@ -368,7 +368,7 @@ export function SettingsPage() {
           </div>
 
           {healthData && Array.isArray(healthData.active_modules) && (
-            <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+            <div style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>
               Active backend modules: <span className="font-mono" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{healthData.active_modules.join(', ')}</span>
             </div>
           )}
@@ -377,39 +377,39 @@ export function SettingsPage() {
         {/* 4. Security & Cryptographic Audit Stream Reality */}
         <section
           style={{
-            backgroundColor: '#FFFDF9',
-            borderRadius: '16px',
-            border: '1px solid rgba(120, 101, 165, 0.12)',
-            padding: '32px 36px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)'
+            backgroundColor: 'var(--bg-surface)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px solid var(--border-hairline)',
+            padding: '24px 28px',
+            boxShadow: 'var(--shadow-card)'
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
                 Security & Audit Retention Architecture
               </h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
                 Cryptographic tamper-evidence and identity role policies
               </p>
             </div>
             <StatusPill status="healthy" label="SHA-256 Hash Chained" size="small" />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
             <div
               style={{
-                padding: '24px',
-                borderRadius: '12px',
-                backgroundColor: 'var(--bg-base)',
+                padding: '18px 22px',
+                borderRadius: 'var(--radius-card)',
+                backgroundColor: '#F8F5FD',
                 border: '1px solid var(--border-hairline)',
                 fontSize: '13px'
               }}
             >
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', fontSize: '14px' }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px', fontSize: '13.5px' }}>
                 Immutable Audit Log Chains
               </div>
-              <div style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+              <div style={{ color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                 Audit events calculate backward SHA-256 hashes linking each record to its predecessor.
                 Cryptographic integrity is verifiable via the Audit page. Retention is indefinite (automated log pruning is not implemented).
               </div>
@@ -417,17 +417,17 @@ export function SettingsPage() {
 
             <div
               style={{
-                padding: '24px',
-                borderRadius: '12px',
-                backgroundColor: 'var(--bg-base)',
+                padding: '18px 22px',
+                borderRadius: 'var(--radius-card)',
+                backgroundColor: '#F8F5FD',
                 border: '1px solid var(--border-hairline)',
                 fontSize: '13px'
               }}
             >
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', fontSize: '14px' }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px', fontSize: '13.5px' }}>
                 Role-Based Access Control (RBAC)
               </div>
-              <div style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+              <div style={{ color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                 Enforced server-side via Django REST Framework permission classes (ADMIN, OPERATOR, VIEWER).
                 Authenticated requests use SimpleJWT Bearer tokens with short-lived access lifespans.
               </div>

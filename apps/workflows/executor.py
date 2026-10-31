@@ -49,6 +49,15 @@ def _execute_with_db_lock_retry(fn, max_retries: int = MAX_DB_LOCK_RETRIES, dela
             raise
 
 
+def _save_with_lock_retry(instance, update_fields=None):
+    """
+    Saves a model instance with retry on transient database table/lock contention.
+    """
+    if update_fields:
+        return _execute_with_db_lock_retry(lambda: instance.save(update_fields=update_fields))
+    return _execute_with_db_lock_retry(lambda: instance.save())
+
+
 class IneligiblePlanExecutionException(Exception):
     """Raised when an unapproved, rejected, completed, or invalid repair plan is submitted for execution."""
     pass
@@ -196,14 +205,14 @@ class RepairExecutor:
             # If pre-execution state ALREADY satisfies expected state (e.g. after a previous attempt timed out after downstream mutation)
             if actual_state == expected_state:
                 repair_plan.status = PlanStatus.SUCCESS
-                repair_plan.save(update_fields=['status', 'updated_at'])
+                _save_with_lock_retry(repair_plan, update_fields=['status', 'updated_at'])
 
                 msg = (
                     f"Pre-execution state inspection: Downstream system '{repair_plan.target_system}' state is already '{actual_state}'. "
                     f"Repair action '{repair_plan.action}' idempotently satisfied without duplicate mutation."
                 )
 
-                execution_log = RepairExecutionLog.objects.create(
+                execution_log = _execute_with_db_lock_retry(lambda: RepairExecutionLog.objects.create(
                     repair_plan=repair_plan,
                     executed_by=executed_by,
                     attempt_number=attempt_number,
@@ -212,7 +221,7 @@ class RepairExecutor:
                     already_satisfied=True,
                     output_message=msg,
                     completed_at=now
-                )
+                ))
 
                 AuditLogger.log_event(
                     event_type=AuditEventType.REPAIR_EXECUTED,
@@ -240,14 +249,14 @@ class RepairExecutor:
                 return execution_log
 
             # 5. Record attempt log entry
-            execution_log = RepairExecutionLog.objects.create(
+            execution_log = _execute_with_db_lock_retry(lambda: RepairExecutionLog.objects.create(
                 repair_plan=repair_plan,
                 executed_by=executed_by,
                 attempt_number=attempt_number,
                 idempotency_key=idempotency_key,
                 status=ExecutionStatus.EXECUTING,
                 output_message=f"Attempt #{attempt_number}: Executing action '{repair_plan.action}' on system '{repair_plan.target_system}'..."
-            )
+            ))
 
             logger.info(f"Started execution attempt #{attempt_number} (Key: {idempotency_key}) for repair plan {repair_plan.id}.")
 
@@ -268,10 +277,10 @@ class RepairExecutor:
                 execution_log.already_satisfied = is_already_satisfied
                 execution_log.output_message = output_msg
                 execution_log.completed_at = completed_now
-                execution_log.save(update_fields=['status', 'already_satisfied', 'output_message', 'completed_at'])
+                _save_with_lock_retry(execution_log, update_fields=['status', 'already_satisfied', 'output_message', 'completed_at'])
 
                 repair_plan.status = PlanStatus.SUCCESS
-                repair_plan.save(update_fields=['status', 'updated_at'])
+                _save_with_lock_retry(repair_plan, update_fields=['status', 'updated_at'])
 
                 AuditLogger.log_event(
                     event_type=AuditEventType.REPAIR_EXECUTED,
@@ -304,7 +313,7 @@ class RepairExecutor:
                 execution_log.status = ExecutionStatus.FAILED
                 execution_log.error_details = error_msg
                 execution_log.completed_at = completed_now
-                execution_log.save(update_fields=['status', 'error_details', 'completed_at'])
+                _save_with_lock_retry(execution_log, update_fields=['status', 'error_details', 'completed_at'])
 
                 logger.warning(f"Attempt #{attempt_number} FAILED for plan {repair_plan.id}: {error_msg}")
 
@@ -328,7 +337,7 @@ class RepairExecutor:
                 # Check if bounded retry policy should trigger auto-retry
                 if auto_retry and attempt_number < max_retries:
                     repair_plan.status = PlanStatus.RETRYING
-                    repair_plan.save(update_fields=['status', 'updated_at'])
+                    _save_with_lock_retry(repair_plan, update_fields=['status', 'updated_at'])
 
                     AuditLogger.log_event(
                         event_type=AuditEventType.RETRY_PERFORMED,
@@ -352,7 +361,7 @@ class RepairExecutor:
                     return self.execute_plan(repair_plan, executed_by=executed_by, max_retries=max_retries, auto_retry=auto_retry, correlation_id=correlation_id)
                 else:
                     repair_plan.status = PlanStatus.FAILED
-                    repair_plan.save(update_fields=['status', 'updated_at'])
+                    _save_with_lock_retry(repair_plan, update_fields=['status', 'updated_at'])
                     return execution_log
 
         except ConnectorException as exc:
@@ -361,7 +370,7 @@ class RepairExecutor:
                 execution_log.status = ExecutionStatus.FAILED
                 execution_log.error_details = str(exc)
                 execution_log.completed_at = completed_now
-                execution_log.save(update_fields=['status', 'error_details', 'completed_at'])
+                _save_with_lock_retry(execution_log, update_fields=['status', 'error_details', 'completed_at'])
 
             logger.error(f"Attempt #{attempt_number} connector exception for plan {repair_plan.id}: {exc}")
 
@@ -384,7 +393,7 @@ class RepairExecutor:
 
             if auto_retry and attempt_number < max_retries:
                 repair_plan.status = PlanStatus.RETRYING
-                repair_plan.save(update_fields=['status', 'updated_at'])
+                _save_with_lock_retry(repair_plan, update_fields=['status', 'updated_at'])
 
                 AuditLogger.log_event(
                     event_type=AuditEventType.RETRY_PERFORMED,
@@ -408,7 +417,7 @@ class RepairExecutor:
                 return self.execute_plan(repair_plan, executed_by=executed_by, max_retries=max_retries, auto_retry=auto_retry, correlation_id=correlation_id)
             else:
                 repair_plan.status = PlanStatus.FAILED
-                repair_plan.save(update_fields=['status', 'updated_at'])
+                _save_with_lock_retry(repair_plan, update_fields=['status', 'updated_at'])
                 raise ExecutionException(f"Connector error after attempt #{attempt_number}: {exc}") from exc
 
         except IneligiblePlanExecutionException:
@@ -421,10 +430,10 @@ class RepairExecutor:
                 execution_log.status = ExecutionStatus.FAILED
                 execution_log.error_details = f"Unexpected execution failure: {exc}"
                 execution_log.completed_at = completed_now
-                execution_log.save(update_fields=['status', 'error_details', 'completed_at'])
+                _save_with_lock_retry(execution_log, update_fields=['status', 'error_details', 'completed_at'])
 
             repair_plan.status = PlanStatus.FAILED
-            repair_plan.save(update_fields=['status', 'updated_at'])
+            _save_with_lock_retry(repair_plan, update_fields=['status', 'updated_at'])
 
             logger.error(f"Unexpected error for plan {repair_plan.id}: {exc}")
 

@@ -3,6 +3,7 @@ import { RefreshCw, Check, AlertCircle } from 'lucide-react';
 import { ApprovalCard } from '../components/ui/ApprovalCard';
 import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
+import { invalidateSearchCache } from '../services/search';
 
 export function ApprovalsPage() {
   const [approvals, setApprovals] = useState([]);
@@ -69,6 +70,7 @@ export function ApprovalsPage() {
         await api.rejectRepair(id, 'Rejected via ReconcileOS Security Dashboard');
       }
 
+      invalidateSearchCache();
       const actionText = actionType === 'APPROVE' ? 'Approved' : 'Rejected';
       showToast(`Decision recorded: ${actionText} approval request.`, 'success');
 

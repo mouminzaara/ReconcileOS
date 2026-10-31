@@ -63,7 +63,7 @@ export function StatCard({
       </div>
 
       {(statusLabel || subtext) && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '11px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '11px', flexWrap: 'wrap' }}>
           {statusLabel && (
             <span style={{ fontWeight: 600, color: accentColor }}>
               {statusLabel}

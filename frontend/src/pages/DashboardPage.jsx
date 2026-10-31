@@ -6,19 +6,31 @@ import {
   ArrowRight,
   ShieldAlert,
   AlertTriangle,
-  Activity
+  Activity,
+  Users,
+  CheckCircle2
 } from 'lucide-react';
 import { StatusPill } from '../components/ui/StatusPill';
 import { Button } from '../components/ui/Button';
 import { ActivityRow } from '../components/ui/ActivityRow';
+import { StatCard } from '../components/ui/StatCard';
 import { api } from '../services/api';
 
 const INITIAL_STATS = {
   totalEmployees: '—',
+  employeeStatus: 'neutral',
+  employeeBreakdown: 'Loading directory...',
   activeViolations: '—',
+  violationsStatus: 'neutral',
+  violationsBreakdown: 'Checking drift...',
   pendingRepairs: '—',
-  successfulReconciliations: '—',
-  systemHealthPercent: '—',
+  pendingStatus: 'neutral',
+  pendingBreakdown: 'Checking approvals...',
+  pendingSubtext: '',
+  systemHealthValue: '—',
+  systemHealthStatus: 'neutral',
+  systemHealthLabel: 'Checking status...',
+  systemHealthSubtext: 'Live telemetry unavailable',
   lastScanTimestamp: null
 };
 
@@ -58,15 +70,44 @@ export function DashboardPage() {
         setDataError(`Some data sources unavailable: ${failedApis.join(', ')}. Displayed values reflect only available data.`);
       }
 
-      const employeesList = empRes.status === 'fulfilled' ? (empRes.value.results || empRes.value) : [];
-      const violationsList = vioRes.status === 'fulfilled' ? (vioRes.value.results || vioRes.value) : [];
-      const plansList = plansRes.status === 'fulfilled' ? (plansRes.value.results || plansRes.value) : [];
-      const pendingList = pendingRes.status === 'fulfilled' ? (pendingRes.value.results || pendingRes.value) : [];
-      const rawAuditLogs = auditRes.status === 'fulfilled' ? (auditRes.value.results || auditRes.value) : [];
-      const collectedStates = stateRes.status === 'fulfilled' ? (stateRes.value.results || stateRes.value) : [];
+      // 1. Process Employees
+      let totalEmployees = '—';
+      let employeeStatus = 'neutral';
+      let employeeBreakdown = 'Directory unavailable';
+      if (empRes.status === 'fulfilled') {
+        const employeesList = empRes.value?.results || empRes.value;
+        if (Array.isArray(employeesList)) {
+          totalEmployees = typeof empRes.value?.count === 'number' ? empRes.value.count : employeesList.length;
+          const activeCount = employeesList.filter(e => e.status === 'ACTIVE').length;
+          const terminatedCount = employeesList.filter(e => e.status === 'TERMINATED').length;
+          employeeStatus = 'healthy';
+          employeeBreakdown = `${activeCount} Active, ${terminatedCount} Terminated`;
+        }
+      }
 
-      if (Array.isArray(violationsList) && violationsList.length > 0) {
-        const formattedViolations = violationsList.map(v => ({
+      // 2. Process Violations
+      let activeViolationsCount = '—';
+      let violationsStatus = 'neutral';
+      let violationsBreakdown = 'Drift data unavailable';
+      let formattedViolations = [];
+      const rawViolations = vioRes.status === 'fulfilled' ? (vioRes.value?.results || vioRes.value) : null;
+      if (Array.isArray(rawViolations)) {
+        const openViolations = rawViolations.filter(v => v.status === 'OPEN');
+        activeViolationsCount = openViolations.length;
+        if (activeViolationsCount > 0) {
+          const criticalCount = openViolations.filter(v => v.severity === 'CRITICAL').length;
+          const highCount = openViolations.filter(v => v.severity === 'HIGH').length;
+          const otherCount = activeViolationsCount - criticalCount - highCount;
+          violationsStatus = 'critical';
+          violationsBreakdown = otherCount > 0
+            ? `${criticalCount} Critical, ${highCount} High, ${otherCount} Other`
+            : `${criticalCount} Critical, ${highCount} High`;
+        } else {
+          violationsStatus = 'healthy';
+          violationsBreakdown = 'Zero drift across systems';
+        }
+
+        formattedViolations = rawViolations.map(v => ({
           id: v.id ? `VIO-${v.id.substring(0, 8).toUpperCase()}` : v.rule_code,
           fullId: v.id,
           employeeName: v.employee_name || (v.employee && v.employee.full_name) || 'Unknown',
@@ -81,69 +122,128 @@ export function DashboardPage() {
           status: v.status || 'OPEN',
           detectedAt: v.detected_at ? new Date(v.detected_at).toLocaleString() : 'Just now'
         }));
-        setViolations(formattedViolations);
-      } else {
-        setViolations([]);
+      }
+      setViolations(formattedViolations);
+
+      // 3. Process Pending Approvals
+      let pendingCount = '—';
+      let pendingStatus = 'neutral';
+      let pendingBreakdown = 'Approvals unavailable';
+      let pendingSubtext = '';
+      if (pendingRes.status === 'fulfilled') {
+        const val = pendingRes.value;
+        const pendingList = val?.results || val;
+        const count = typeof val?.count === 'number'
+          ? val.count
+          : (Array.isArray(pendingList) ? pendingList.length : 0);
+        pendingCount = count;
+        if (count > 0) {
+          pendingStatus = 'warning';
+          pendingBreakdown = 'Action required';
+          pendingSubtext = `${count} awaiting SecOps approval`;
+        } else {
+          pendingStatus = 'healthy';
+          pendingBreakdown = 'Queue clear';
+          pendingSubtext = 'All repair plans clear';
+        }
       }
 
-      if (Array.isArray(rawAuditLogs) && rawAuditLogs.length > 0) {
-        const formattedLogs = rawAuditLogs.slice(0, 5).map(log => ({
-          id: log.id ? `AUD-${String(log.id).substring(0, 8).toUpperCase()}` : (log.correlation_id || 'AUD-0000'),
-          eventType: log.event_type || 'EVENT',
-          target: log.employee_name || log.employee_email || log.action || 'Directory Resource',
-          timestamp: log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : 'Just now',
-          status: log.result || 'SUCCESS'
-        }));
-        setActivityLogs(formattedLogs);
+      // 4. Process Audit Logs
+      if (auditRes.status === 'fulfilled') {
+        const rawAuditLogs = auditRes.value?.results || auditRes.value;
+        if (Array.isArray(rawAuditLogs) && rawAuditLogs.length > 0) {
+          const formattedLogs = rawAuditLogs.slice(0, 5).map(log => ({
+            id: log.id ? `AUD-${String(log.id).substring(0, 8).toUpperCase()}` : (log.correlation_id || 'AUD-0000'),
+            eventType: log.event_type || 'EVENT',
+            target: log.employee_name || log.employee_email || log.action || 'Directory Resource',
+            timestamp: log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : 'Just now',
+            status: log.result || 'SUCCESS'
+          }));
+          setActivityLogs(formattedLogs);
+        } else {
+          setActivityLogs([]);
+        }
       } else {
         setActivityLogs([]);
       }
 
-      if (Array.isArray(collectedStates) && collectedStates.length > 0) {
-        const activeSystemsMap = {
-          HR: { active: collectedStates.length, hasDrift: false },
-          VPN: { active: 0, hasDrift: false },
-          GitHub: { active: 0, hasDrift: false },
-          Cloud: { active: 0, hasDrift: false },
-          Slack: { active: 0, hasDrift: false }
-        };
+      // 5. Process Systems & Health (No fabricated latency or health percentages)
+      let systemHealthValue = 'Unavailable';
+      let systemHealthStatus = 'neutral';
+      let systemHealthLabel = 'Health status unavailable';
+      let systemHealthSubtext = 'Live telemetry unmeasured';
+      let configuredSystems = [];
 
-        collectedStates.forEach(st => {
-          const sys = st.systems || {};
-          if (sys.vpn?.access_status === 'ENABLED') activeSystemsMap.VPN.active += 1;
-          if (sys.github?.access_status === 'ACTIVE' || sys.github?.access_status === 'MEMBER') activeSystemsMap.GitHub.active += 1;
-          if (sys.cloud?.access_status && sys.cloud?.access_status !== 'NO_ROLE' && sys.cloud?.access_status !== 'NOT_PROVISIONED') activeSystemsMap.Cloud.active += 1;
-          if (sys.slack?.access_status === 'ACTIVE') activeSystemsMap.Slack.active += 1;
-        });
+      if (stateRes.status === 'fulfilled') {
+        const collectedStates = stateRes.value?.results || stateRes.value;
+        if (Array.isArray(collectedStates) && collectedStates.length > 0) {
+          const activeSystemsMap = {
+            HR: { active: collectedStates.length, hasDrift: false },
+            VPN: { active: 0, hasDrift: false },
+            GitHub: { active: 0, hasDrift: false },
+            Cloud: { active: 0, hasDrift: false },
+            Slack: { active: 0, hasDrift: false }
+          };
 
-        violationsList.filter(v => v.status === 'OPEN').forEach(v => {
-          const key = (v.affected_system || '').toUpperCase();
-          if (activeSystemsMap[key]) {
-            activeSystemsMap[key].hasDrift = true;
+          collectedStates.forEach(st => {
+            const sys = st.systems || {};
+            if (sys.vpn?.access_status === 'ENABLED') activeSystemsMap.VPN.active += 1;
+            if (sys.github?.access_status === 'ACTIVE' || sys.github?.access_status === 'MEMBER') activeSystemsMap.GitHub.active += 1;
+            if (sys.cloud?.access_status && sys.cloud?.access_status !== 'NO_ROLE' && sys.cloud?.access_status !== 'NOT_PROVISIONED') activeSystemsMap.Cloud.active += 1;
+            if (sys.slack?.access_status === 'ACTIVE') activeSystemsMap.Slack.active += 1;
+          });
+
+          if (Array.isArray(rawViolations)) {
+            rawViolations.filter(v => v.status === 'OPEN').forEach(v => {
+              const key = (v.affected_system || '').toUpperCase();
+              if (activeSystemsMap[key]) {
+                activeSystemsMap[key].hasDrift = true;
+              }
+            });
           }
-        });
 
-        const nowStr = new Date().toLocaleTimeString();
-        setSystems([
-          { id: 'sys-1', name: 'BambooHR Gateway', type: 'HR System of Record', protocol: 'REST / OAuth2', status: 'HEALTHY', activeAccounts: activeSystemsMap.HR.active, latency: '12ms', lastChecked: nowStr },
-          { id: 'sys-2', name: 'OpenVPN Gateway', type: 'Network Access Control', protocol: 'OpenVPN Management API', status: activeSystemsMap.VPN.hasDrift ? 'DRIFT_DETECTED' : 'HEALTHY', activeAccounts: activeSystemsMap.VPN.active, latency: '45ms', lastChecked: nowStr },
-          { id: 'sys-3', name: 'GitHub Enterprise', type: 'Source Code & Organization', protocol: 'GitHub REST v3 / GraphQL', status: activeSystemsMap.GitHub.hasDrift ? 'DRIFT_DETECTED' : 'HEALTHY', activeAccounts: activeSystemsMap.GitHub.active, latency: '88ms', lastChecked: nowStr },
-          { id: 'sys-4', name: 'AWS Cloud IAM', type: 'Cloud Infrastructure & Roles', protocol: 'AWS Security Token Service', status: activeSystemsMap.Cloud.hasDrift ? 'DRIFT_DETECTED' : 'HEALTHY', activeAccounts: activeSystemsMap.Cloud.active, latency: '120ms', lastChecked: nowStr },
-          { id: 'sys-5', name: 'Slack Workspace', type: 'Corporate Chat & Provisioning', protocol: 'Slack SCIM API v2', status: activeSystemsMap.Slack.hasDrift ? 'DRIFT_DETECTED' : 'HEALTHY', activeAccounts: activeSystemsMap.Slack.active, latency: '34ms', lastChecked: nowStr }
-        ]);
-      } else if (stateRes.status === 'rejected') {
-        setSystems([]);
+          const nowStr = new Date().toLocaleTimeString();
+          configuredSystems = [
+            { id: 'sys-1', name: 'BambooHR Gateway', type: 'HR System of Record', protocol: 'REST / OAuth2', status: 'HEALTHY', activeAccounts: activeSystemsMap.HR.active, lastChecked: nowStr },
+            { id: 'sys-2', name: 'OpenVPN Gateway', type: 'Network Access Control', protocol: 'OpenVPN Management API', status: activeSystemsMap.VPN.hasDrift ? 'DRIFT_DETECTED' : 'HEALTHY', activeAccounts: activeSystemsMap.VPN.active, lastChecked: nowStr },
+            { id: 'sys-3', name: 'GitHub Enterprise', type: 'Source Code & Organization', protocol: 'GitHub REST v3 / GraphQL', status: activeSystemsMap.GitHub.hasDrift ? 'DRIFT_DETECTED' : 'HEALTHY', activeAccounts: activeSystemsMap.GitHub.active, lastChecked: nowStr },
+            { id: 'sys-4', name: 'AWS Cloud IAM', type: 'Cloud Infrastructure & Roles', protocol: 'AWS Security Token Service', status: activeSystemsMap.Cloud.hasDrift ? 'DRIFT_DETECTED' : 'HEALTHY', activeAccounts: activeSystemsMap.Cloud.active, lastChecked: nowStr },
+            { id: 'sys-5', name: 'Slack Workspace', type: 'Corporate Chat & Provisioning', protocol: 'Slack SCIM API v2', status: activeSystemsMap.Slack.hasDrift ? 'DRIFT_DETECTED' : 'HEALTHY', activeAccounts: activeSystemsMap.Slack.active, lastChecked: nowStr }
+          ];
+
+          systemHealthValue = `${configuredSystems.length} Configured`;
+          systemHealthStatus = activeViolationsCount > 0 ? 'warning' : 'neutral';
+          systemHealthLabel = 'Health status unavailable';
+          systemHealthSubtext = 'Live telemetry unmeasured';
+        } else {
+          systemHealthValue = '0 Configured';
+          systemHealthStatus = 'neutral';
+          systemHealthLabel = 'No collected states';
+          systemHealthSubtext = 'Run reconciliation scan';
+        }
+      } else {
+        systemHealthValue = 'Unavailable';
+        systemHealthStatus = 'warning';
+        systemHealthLabel = 'Health status unavailable';
+        systemHealthSubtext = 'System state API failed';
       }
-
-      const activeViolationsCount = Array.isArray(violationsList) ? violationsList.filter(v => v.status === 'OPEN').length : 0;
-      const completedPlansCount = Array.isArray(plansList) ? plansList.filter(p => p.status === 'COMPLETED' || p.status === 'SUCCESS').length : 0;
+      setSystems(configuredSystems);
 
       setStats({
-        totalEmployees: Array.isArray(employeesList) ? employeesList.length : '—',
+        totalEmployees,
+        employeeStatus,
+        employeeBreakdown,
         activeViolations: activeViolationsCount,
-        pendingRepairs: Array.isArray(pendingList) ? pendingList.length : '—',
-        successfulReconciliations: completedPlansCount,
-        systemHealthPercent: activeViolationsCount === 0 ? 100 : Math.max(60, 100 - activeViolationsCount * 10),
+        violationsStatus,
+        violationsBreakdown,
+        pendingRepairs: pendingCount,
+        pendingStatus,
+        pendingBreakdown,
+        pendingSubtext,
+        systemHealthValue,
+        systemHealthStatus,
+        systemHealthLabel,
+        systemHealthSubtext,
         lastScanTimestamp: new Date().toLocaleTimeString()
       });
 
@@ -201,7 +301,7 @@ export function DashboardPage() {
     }
   };
 
-  const activeViolation = violations.find(v => v.severity === 'CRITICAL' || v.status === 'ACTIVE' || v.status === 'OPEN') || violations[0];
+  const activeViolation = violations.find(v => (v.status === 'OPEN' || v.status === 'ACTIVE') && v.severity === 'CRITICAL') || violations.find(v => v.status === 'OPEN' || v.status === 'ACTIVE');
 
   return (
     <div className="page-content">
@@ -284,54 +384,41 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Editorial Horizontal Metric Summary Strip (Directly replacing bulky widget cards) */}
-      <div className="metric-summary-strip">
-        <div className="metric-summary-item">
-          <div className="metric-summary-label">Tracked Identities</div>
-          <div className="metric-summary-value">{stats.totalEmployees}</div>
-          <div className="metric-summary-subtext">Active HR directory records</div>
-        </div>
+      {/* Stat Cards Grid (Lavender Enterprise Admin) */}
+      <div className="grid-4">
+        <StatCard
+          title="Total Employees"
+          value={stats.totalEmployees}
+          status={stats.employeeStatus}
+          statusLabel={stats.employeeBreakdown}
+          icon={Users}
+        />
 
-        <div className="metric-summary-item">
-          <div className="metric-summary-label">
-            Active Violations
-            {stats.activeViolations > 0 && (
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--status-critical)' }} />
-            )}
-          </div>
-          <div
-            className="metric-summary-value"
-            style={{ color: stats.activeViolations > 0 ? 'var(--status-critical)' : 'var(--text-primary)' }}
-          >
-            {stats.activeViolations}
-          </div>
-          <div className="metric-summary-subtext">
-            {stats.activeViolations > 0 ? 'Authorization drift detected' : 'Zero drift across systems'}
-          </div>
-        </div>
+        <StatCard
+          title="Active Violations"
+          value={stats.activeViolations}
+          status={stats.violationsStatus}
+          statusLabel={stats.violationsBreakdown}
+          icon={ShieldAlert}
+        />
 
-        <div className="metric-summary-item">
-          <div className="metric-summary-label">Pending Approvals</div>
-          <div
-            className="metric-summary-value"
-            style={{ color: stats.pendingRepairs > 0 ? 'var(--status-warning)' : 'var(--text-primary)' }}
-          >
-            {stats.pendingRepairs}
-          </div>
-          <div className="metric-summary-subtext">
-            {stats.pendingRepairs > 0 ? 'SecOps human review required' : 'All repair plans clear'}
-          </div>
-        </div>
+        <StatCard
+          title="Pending Approvals"
+          value={stats.pendingRepairs}
+          status={stats.pendingStatus}
+          statusLabel={stats.pendingBreakdown}
+          subtext={stats.pendingSubtext}
+          icon={Activity}
+        />
 
-        <div className="metric-summary-item">
-          <div className="metric-summary-label">System Health</div>
-          <div className="metric-summary-value" style={{ color: 'var(--status-healthy)' }}>
-            {stats.systemHealthPercent !== '—' ? `${stats.systemHealthPercent}%` : '—'}
-          </div>
-          <div className="metric-summary-subtext">
-            {systems.length > 0 ? `${systems.filter(s => s.status === 'HEALTHY').length} of ${systems.length} systems verified` : 'Continuous verification'}
-          </div>
-        </div>
+        <StatCard
+          title="System Health"
+          value={stats.systemHealthValue}
+          status={stats.systemHealthStatus}
+          statusLabel={stats.systemHealthLabel}
+          subtext={stats.systemHealthSubtext}
+          icon={CheckCircle2}
+        />
       </div>
 
       {/* Priority Focus: Drift Anomaly Callout (Editorial narrative block) */}
@@ -379,7 +466,7 @@ export function DashboardPage() {
           <div className="section-header">
             <div>
               <h2 className="section-title">Connected Gateways</h2>
-              <p className="section-desc">Live synchronization telemetry across target systems</p>
+              <p className="section-desc">Target system connectors and drift tracking across services</p>
             </div>
             <Link to="/systems" style={{ fontSize: '13px', fontWeight: 600 }}>
               All systems →
@@ -392,8 +479,8 @@ export function DashboardPage() {
                 <thead>
                   <tr>
                     <th>Gateway</th>
-                    <th>Status</th>
-                    <th>Latency</th>
+                    <th>Drift Status</th>
+                    <th>Telemetry</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -406,10 +493,15 @@ export function DashboardPage() {
                           <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{sys.type}</div>
                         </td>
                         <td>
-                          <StatusPill status={isDrift ? 'warning' : 'healthy'} label={isDrift ? 'Drift' : 'Healthy'} size="small" />
+                          <StatusPill status={isDrift ? 'warning' : 'healthy'} label={isDrift ? 'Drift' : 'In Sync'} size="small" />
                         </td>
-                        <td className="font-mono" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                          {sys.latency}
+                        <td>
+                          <div style={{ fontSize: '12.5px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                            {sys.activeAccounts} {sys.activeAccounts === 1 ? 'account' : 'accounts'}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            Latency unmeasured
+                          </div>
                         </td>
                       </tr>
                     );
@@ -418,7 +510,7 @@ export function DashboardPage() {
               </table>
             ) : (
               <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-                {loading ? 'Polling gateway telemetry...' : 'System state unavailable. Run a reconciliation scan.'}
+                {loading ? 'Loading gateway data...' : 'System state unavailable. Run a reconciliation scan.'}
               </div>
             )}
           </div>

@@ -160,3 +160,45 @@ class ApprovalsTestCase(TestCase):
         response = self.client.post(approve_url, {'comment': 'Duplicate approve'})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['status'], 'error')
+
+    def test_approve_api_executes_repair_and_resolves_violation(self):
+        """
+        Verify that calling POST /api/v1/approvals/<id>/approve/ approves the request,
+        executes the remediation action via connector, disables downstream VPN access,
+        empirically verifies compliance, sets repair plan to COMPLETED, and resolves the violation.
+        """
+        self.client.force_authenticate(user=self.admin_user)
+
+        # Before approval
+        self.assertEqual(self.vpn_access.status, VPNAccessStatus.ENABLED)
+        self.assertEqual(self.violation.status, ViolationStatus.OPEN)
+        self.assertEqual(self.plan.status, PlanStatus.PENDING)
+
+        approve_url = f"/api/v1/approvals/{self.approval_request.id}/approve/"
+        response = self.client.post(approve_url, {'comment': 'Approved by SecOps Admin'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'success')
+
+        # State verification
+        self.approval_request.refresh_from_db()
+        self.plan.refresh_from_db()
+        self.violation.refresh_from_db()
+        self.vpn_access.refresh_from_db()
+
+        self.assertEqual(self.approval_request.decision, ApprovalDecision.APPROVED)
+        self.assertEqual(self.plan.status, PlanStatus.COMPLETED)
+        self.assertEqual(self.violation.status, ViolationStatus.RESOLVED)
+        self.assertEqual(self.vpn_access.status, VPNAccessStatus.DISABLED)
+
+        # Pending approvals endpoint should now report 0 pending
+        res_pending = self.client.get('/api/v1/approvals/pending/')
+        self.assertEqual(res_pending.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_pending.data['count'], 0)
+
+        # Continuous monitor run should NOT detect any open violation
+        from apps.reconciliation.monitor import ContinuousMonitor
+        monitor = ContinuousMonitor()
+        summary = monitor.run_monitoring_cycle(employee_id=str(self.employee.id))
+        self.assertEqual(summary['remaining_open_violations_count'], 0)
+        self.assertEqual(summary['system_status'], 'CONSISTENT')
+

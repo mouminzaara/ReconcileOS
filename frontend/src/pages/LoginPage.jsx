@@ -6,11 +6,9 @@ import {
   AlertCircle,
   ArrowRight,
   ArrowLeft,
-  ShieldCheck,
-  Zap,
   Lock,
-  Server,
-  Activity,
+  Zap,
+  ShieldCheck,
   FileText
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -51,196 +49,155 @@ export function LoginPage() {
 
   return (
     <div className="login-page">
-      {/* Decorative Left Panel */}
-      <div className="login-left-panel">
-        <div className="login-left-content">
-          {/* Back to landing */}
-          <Link to="/landing" className="login-back-link">
-            <ArrowLeft size={16} />
-            <span>Back to ReconcileOS</span>
-          </Link>
+      {/* Ambient background glow */}
+      <div className="login-ambient" aria-hidden="true" />
 
-          {/* Brand Block */}
-          <div className="login-brand-block">
-            <div className="login-brand-icon">
-              <Shield size={28} />
+      <div className="login-scaffold">
+        {/* Back link */}
+        <Link to="/landing" className="login-back-link">
+          <ArrowLeft size={14} />
+          <span>Back to ReconcileOS</span>
+        </Link>
+
+        {/* Two-column composition */}
+        <div className="login-columns">
+          {/* Left: Brand */}
+          <div className="login-brand">
+            <div className="login-brand-lockup login-anim login-anim-1">
+              <div className="login-brand-icon">
+                <Shield size={28} />
+              </div>
+              <span className="login-brand-wordmark">ReconcileOS</span>
             </div>
-            <h1 className="login-brand-title">ReconcileOS</h1>
-            <p className="login-brand-tagline">
+
+            <h1 className="login-brand-headline login-anim login-anim-2">
               Continuous Integrity &amp; Self-Healing Identity Platform
+            </h1>
+
+            <p className="login-brand-body login-anim login-anim-3">
+              Continuous drift detection and automated remediation across HR, Cloud IAM, GitHub, VPN, and Slack.
             </p>
+
+            <ul className="login-brand-features login-anim login-anim-4">
+              <li>
+                <Zap size={15} />
+                <span>Automated drift detection across five connected systems</span>
+              </li>
+              <li>
+                <ShieldCheck size={15} />
+                <span>Human-in-the-loop repair approvals</span>
+              </li>
+              <li>
+                <FileText size={15} />
+                <span>SHA-256 tamper-evident audit trail</span>
+              </li>
+            </ul>
           </div>
 
-          {/* Feature Pills */}
-          <div className="login-feature-list">
-            <div className="login-feature-pill">
-              <div className="login-feature-pill-icon">
-                <Zap size={16} />
-              </div>
-              <div>
-                <div className="login-feature-pill-title">Automated Drift Detection</div>
-                <div className="login-feature-pill-desc">Real-time cross-system reconciliation</div>
-              </div>
+          {/* Right: Form Card */}
+          <div className="login-card login-anim login-anim-card">
+            <div className="login-card-header">
+              <h2 className="login-card-title">Welcome back</h2>
+              <p className="login-card-subtitle">
+                Sign in to your ReconcileOS workspace.
+              </p>
             </div>
 
-            <div className="login-feature-pill">
-              <div className="login-feature-pill-icon">
-                <ShieldCheck size={16} />
+            {error && (
+              <div className="login-error-alert" role="alert">
+                <AlertCircle size={16} />
+                <span>{error}</span>
               </div>
-              <div>
-                <div className="login-feature-pill-title">Human-in-the-Loop Approvals</div>
-                <div className="login-feature-pill-desc">SecOps gated repair execution</div>
+            )}
+
+            <form onSubmit={handleSubmit} className="login-form">
+              <div className="login-field">
+                <label className="login-label" htmlFor="login-email">
+                  Work email
+                </label>
+                <div className="login-input-wrapper">
+                  <UserCheck size={15} className="login-input-icon" />
+                  <input
+                    id="login-email"
+                    type="text"
+                    className="login-input"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="user@reconcileos.internal"
+                    required
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="login-feature-pill">
-              <div className="login-feature-pill-icon">
-                <FileText size={16} />
+              <div className="login-field">
+                <label className="login-label" htmlFor="login-password">
+                  Password
+                </label>
+                <div className="login-input-wrapper">
+                  <Lock size={15} className="login-input-icon" />
+                  <input
+                    id="login-password"
+                    type="password"
+                    className="login-input"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
               </div>
-              <div>
-                <div className="login-feature-pill-title">Tamper-Evident Audit Trail</div>
-                <div className="login-feature-pill-desc">SHA-256 cryptographic hash chain</div>
-              </div>
-            </div>
-          </div>
 
-          {/* Floating Decorative Orbs */}
-          <div className="login-orb login-orb-1" />
-          <div className="login-orb login-orb-2" />
-          <div className="login-orb login-orb-3" />
-        </div>
+              <button
+                type="submit"
+                className="login-submit-btn"
+                disabled={loading}
+              >
+                <span>{loading ? 'Signing in…' : 'Sign in'}</span>
+                {!loading && <ArrowRight size={15} />}
+              </button>
+            </form>
 
-        {/* Bottom Trust Bar */}
-        <div className="login-trust-bar">
-          <div className="login-trust-item">
-            <Server size={14} />
-            <span>5 Connected Systems</span>
-          </div>
-          <div className="login-trust-divider" />
-          <div className="login-trust-item">
-            <Activity size={14} />
-            <span>Daemon Active</span>
-          </div>
-          <div className="login-trust-divider" />
-          <div className="login-trust-item">
-            <Lock size={14} />
-            <span>Zero-Trust Enforcement</span>
-          </div>
-        </div>
-      </div>
+            {/* Demo accounts */}
+            <div className="login-demo-section">
+              <div className="login-demo-label">Demo accounts</div>
+              <div className="login-demo-list">
+                <button
+                  type="button"
+                  className="login-demo-row"
+                  onClick={() => handlePresetSelect('admin@reconcileos.internal', 'admin123')}
+                >
+                  <div className="login-demo-row-top">
+                    <span className="login-demo-role">Admin</span>
+                    <StatusPill status="critical" label="Full Control" size="small" />
+                  </div>
+                  <span className="login-demo-email">admin@reconcileos.internal</span>
+                </button>
 
-      {/* Right Form Panel */}
-      <div className="login-right-panel">
-        <div className="login-form-wrapper">
-          {/* Form Header */}
-          <div className="login-form-header">
-            <div className="login-form-icon">
-              <Lock size={22} />
-            </div>
-            <h2 className="login-form-title">Security Access Portal</h2>
-            <p className="login-form-subtitle">
-              Authenticate with your corporate identity to access the Integrity Control Center
-            </p>
-          </div>
+                <button
+                  type="button"
+                  className="login-demo-row"
+                  onClick={() => handlePresetSelect('operator@reconcileos.internal', 'operator123')}
+                >
+                  <div className="login-demo-row-top">
+                    <span className="login-demo-role">Operator</span>
+                    <StatusPill status="warning" label="Reconcile & Plan" size="small" />
+                  </div>
+                  <span className="login-demo-email">operator@reconcileos.internal</span>
+                </button>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="login-error-alert">
-              <AlertCircle size={18} />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="login-form">
-            <div className="login-field">
-              <label className="login-label" htmlFor="login-email">
-                Corporate Identity / Email
-              </label>
-              <div className="login-input-wrapper">
-                <UserCheck size={16} className="login-input-icon" />
-                <input
-                  id="login-email"
-                  type="text"
-                  className="login-input"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="user@reconcileos.internal"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="login-field">
-              <label className="login-label" htmlFor="login-password">
-                Password
-              </label>
-              <div className="login-input-wrapper">
-                <Lock size={16} className="login-input-icon" />
-                <input
-                  id="login-password"
-                  type="password"
-                  className="login-input"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                />
+                <button
+                  type="button"
+                  className="login-demo-row"
+                  onClick={() => handlePresetSelect('viewer@reconcileos.internal', 'viewer123')}
+                >
+                  <div className="login-demo-row-top">
+                    <span className="login-demo-role">Viewer</span>
+                    <StatusPill status="healthy" label="Read Only" size="small" />
+                  </div>
+                  <span className="login-demo-email">viewer@reconcileos.internal</span>
+                </button>
               </div>
             </div>
-
-            <button
-              type="submit"
-              className="login-submit-btn"
-              disabled={loading}
-            >
-              <span>{loading ? 'Authenticating...' : 'Sign In with SimpleJWT'}</span>
-              {!loading && <ArrowRight size={18} />}
-            </button>
-          </form>
-
-          {/* Divider */}
-          <div className="login-divider">
-            <span>Quick-Fill Role Presets</span>
-          </div>
-
-          {/* Quick-Fill Demo Presets */}
-          <div className="login-presets">
-            <button
-              type="button"
-              className="preset-btn"
-              onClick={() => handlePresetSelect('admin@reconcileos.internal', 'admin123')}
-            >
-              <span className="preset-btn-info">
-                <strong>ADMIN:</strong>
-                <span>admin@reconcileos.internal</span>
-              </span>
-              <StatusPill status="critical" label="Full Control" size="small" />
-            </button>
-
-            <button
-              type="button"
-              className="preset-btn"
-              onClick={() => handlePresetSelect('operator@reconcileos.internal', 'operator123')}
-            >
-              <span className="preset-btn-info">
-                <strong>OPERATOR:</strong>
-                <span>operator@reconcileos.internal</span>
-              </span>
-              <StatusPill status="warning" label="Reconcile & Plan" size="small" />
-            </button>
-
-            <button
-              type="button"
-              className="preset-btn"
-              onClick={() => handlePresetSelect('viewer@reconcileos.internal', 'viewer123')}
-            >
-              <span className="preset-btn-info">
-                <strong>VIEWER:</strong>
-                <span>viewer@reconcileos.internal</span>
-              </span>
-              <StatusPill status="healthy" label="Read Only" size="small" />
-            </button>
           </div>
         </div>
       </div>

@@ -18,22 +18,22 @@ export function StructuredRuleCard({
   return (
     <div
       style={{
-        backgroundColor: '#FFFDF9',
-        borderRadius: '16px',
-        border: '1px solid rgba(120, 101, 165, 0.12)',
-        padding: '28px 32px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+        backgroundColor: 'var(--bg-surface)',
+        borderRadius: 'var(--radius-card)',
+        border: '1px solid var(--border-hairline)',
+        padding: '22px 26px',
+        boxShadow: 'var(--shadow-card)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '20px'
+        gap: '16px'
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }} className="font-mono">
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }} className="font-mono">
             {ruleId}
           </span>
-          <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
             {title}
           </h3>
         </div>
@@ -48,10 +48,10 @@ export function StructuredRuleCard({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '20px',
-          padding: '16px 20px',
-          borderRadius: '12px',
-          backgroundColor: 'var(--bg-base)',
+          gap: '16px',
+          padding: '14px 18px',
+          borderRadius: 'var(--radius-card)',
+          backgroundColor: '#F8F5FD',
           border: '1px solid var(--border-hairline)',
           fontSize: '13px'
         }}

@@ -21,6 +21,7 @@ _audit_chain_lock = threading.RLock()
 
 
 class AuditEventType(models.TextChoices):
+    EMPLOYEE_TERMINATED = 'employee_terminated', 'Employee Terminated'
     RULE_EVALUATED = 'rule_evaluated', 'Rule Evaluated'
     VIOLATION_DETECTED = 'violation_detected', 'Violation Detected'
     REPAIR_PLAN_CREATED = 'repair_plan_created', 'Repair Plan Created'

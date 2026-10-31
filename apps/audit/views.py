@@ -2,12 +2,13 @@
 Views for Audit Log REST API.
 """
 
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import AuditLog
 from .serializers import AuditLogSerializer
 from .services import AuditLogger
+from apps.accounts.permissions import IsAdminUserRole, IsViewerUserRole
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
@@ -15,12 +16,16 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     Read-only API ViewSet for inspecting append-only audit log records.
 
     Disallows creation, updates, and deletions via REST interface.
-    Provides custom endpoint `/api/audit/logs/verify_chain/` to audit tamper evidence.
+    Provides custom endpoint `/api/v1/audit/logs/verify_chain/` to audit tamper evidence.
     """
     queryset = AuditLog.objects.all().select_related('employee')
     serializer_class = AuditLogSerializer
-    permission_classes = [permissions.IsAuthenticated]
     filterset_fields = ['event_type', 'actor', 'system', 'result', 'correlation_id', 'employee']
+
+    def get_permissions(self):
+        if self.action in ['verify_chain']:
+            return [IsAdminUserRole()]
+        return [IsViewerUserRole()]
     search_fields = [
         'actor',
         'system',

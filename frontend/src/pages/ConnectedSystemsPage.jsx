@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Server, Users, Shield, GitBranch, Cloud, MessageSquare, RefreshCw, AlertCircle, Info } from 'lucide-react';
+import { Server, Users, Shield, GitBranch, Cloud, MessageSquare, RefreshCw, AlertCircle, Info, Zap, Loader } from 'lucide-react';
 import { StatusPill } from '../components/ui/StatusPill';
 import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
@@ -119,14 +119,16 @@ export function ConnectedSystemsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [testingKey, setTestingKey] = useState(null);
 
   const fetchSystemStates = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [statesRes, violationsRes] = await Promise.allSettled([
+      const [statesRes, violationsRes, healthRes] = await Promise.allSettled([
         api.getCollectedStates(),
-        api.getViolations()
+        api.getViolations(),
+        api.getConnectorsHealth()
       ]);
 
       if (statesRes.status === 'rejected') {
@@ -137,6 +139,9 @@ export function ConnectedSystemsPage() {
       const violationsData = violationsRes.status === 'fulfilled'
         ? (violationsRes.value?.results || violationsRes.value || [])
         : [];
+      const healthData = healthRes.status === 'fulfilled'
+        ? (healthRes.value?.systems || {})
+        : {};
 
       const openViolations = Array.isArray(violationsData)
         ? violationsData.filter(v => v.status === 'OPEN')
@@ -178,11 +183,28 @@ export function ConnectedSystemsPage() {
           }
         }
 
+        // Merge truthful health check data from backend
+        const health = healthData[sysKey];
+        const reachability = health ? health.reachability : baseSys.reachability;
+        const reachabilityVariant = health
+          ? (health.status === 'HEALTHY' || health.status === 'SIMULATED_HEALTHY' || health.status === 'DATABASE_FALLBACK_HEALTHY'
+            ? 'healthy'
+            : health.status === 'ERROR' || health.status === 'CONNECTION_FAILED'
+              ? 'critical'
+              : health.status === 'TIMEOUT' || health.status === 'SIMULATED_FAILURE'
+                ? 'warning'
+                : 'neutral')
+          : baseSys.reachabilityVariant;
+
         return {
           ...baseSys,
           monitoredAccounts: monitoredCount,
           driftCount,
-          driftStatus: driftCount > 0 ? 'DRIFT_DETECTED' : 'HEALTHY'
+          driftStatus: driftCount > 0 ? 'DRIFT_DETECTED' : 'HEALTHY',
+          reachability,
+          reachabilityVariant,
+          latencyMs: health ? health.latency_ms : null,
+          healthMessage: health ? health.message : null,
         };
       });
 
@@ -193,6 +215,45 @@ export function ConnectedSystemsPage() {
       setError(err.message || 'Failed to load connected systems state.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestConnection = async (sysKey) => {
+    setTestingKey(sysKey);
+    try {
+      const result = await api.checkConnectorHealth(sysKey);
+      // Update system reachability in-place
+      setSystems(prev => prev.map(sys => {
+        if (sys.key !== sysKey) return sys;
+        const reachabilityVariant =
+          result.status === 'HEALTHY' || result.status === 'SIMULATED_HEALTHY' || result.status === 'DATABASE_FALLBACK_HEALTHY'
+            ? 'healthy'
+            : result.status === 'ERROR' || result.status === 'CONNECTION_FAILED'
+              ? 'critical'
+              : result.status === 'TIMEOUT' || result.status === 'SIMULATED_FAILURE'
+                ? 'warning'
+                : 'neutral';
+        return {
+          ...sys,
+          reachability: result.reachability,
+          reachabilityVariant,
+          latencyMs: result.latency_ms,
+          healthMessage: result.message,
+        };
+      }));
+    } catch (err) {
+      setSystems(prev => prev.map(sys => {
+        if (sys.key !== sysKey) return sys;
+        return {
+          ...sys,
+          reachability: 'Test Failed',
+          reachabilityVariant: 'critical',
+          latencyMs: null,
+          healthMessage: err.message || 'Connection test failed.',
+        };
+      }));
+    } finally {
+      setTestingKey(null);
     }
   };
 
@@ -236,22 +297,22 @@ export function ConnectedSystemsPage() {
       {/* Integration Truthfulness Notice */}
       <div
         style={{
-          marginBottom: '40px',
-          padding: '24px 28px',
-          borderRadius: '16px',
-          backgroundColor: '#FFFDF9',
-          border: '1px solid rgba(120, 101, 165, 0.18)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+          marginBottom: '28px',
+          padding: '18px 22px',
+          borderRadius: 'var(--radius-card)',
+          backgroundColor: 'var(--bg-surface)',
+          border: '1px solid var(--border-hairline)',
+          boxShadow: 'var(--shadow-card)',
           display: 'flex',
-          gap: '18px',
+          gap: '16px',
           alignItems: 'flex-start'
         }}
       >
         <div
           style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
+            borderRadius: 'var(--radius-btn)',
             backgroundColor: 'var(--accent-primary-light)',
             display: 'flex',
             alignItems: 'center',
@@ -261,13 +322,13 @@ export function ConnectedSystemsPage() {
             marginTop: '2px'
           }}
         >
-          <Info size={18} />
+          <Info size={16} />
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)', marginBottom: '6px' }}>
+          <div style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text-primary)', marginBottom: '4px' }}>
             Integration Reality & Governance Notice
           </div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.6' }}>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.5' }}>
             ReconcileOS distinguishes between <strong>Live integrations</strong> (authenticated third-party APIs),
             <strong> Local simulations</strong> (ORM models with programmable failure modes), and
             <strong> Database fallbacks</strong> (unconfigured integrations defaulting to local database state).
@@ -279,14 +340,14 @@ export function ConnectedSystemsPage() {
       {error && (
         <div
           style={{
-            marginBottom: '32px',
-            padding: '16px 22px',
-            borderRadius: '12px',
+            marginBottom: '24px',
+            padding: '14px 18px',
+            borderRadius: 'var(--radius-card)',
             backgroundColor: 'var(--status-critical-bg)',
             border: '1px solid var(--status-critical-border)',
             color: 'var(--status-critical)',
             fontSize: '13px',
-            fontWeight: 600,
+            fontWeight: 500,
             display: 'flex',
             alignItems: 'center',
             gap: '10px'
@@ -297,8 +358,8 @@ export function ConnectedSystemsPage() {
         </div>
       )}
 
-      {/* Systems Editorial Directory */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Systems Enterprise Directory */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {systems.map((sys) => {
           const Icon = iconMap[sys.icon] || Server;
           const isDrift = sys.driftStatus === 'DRIFT_DETECTED';
@@ -307,14 +368,14 @@ export function ConnectedSystemsPage() {
             <div
               key={sys.id}
               style={{
-                backgroundColor: '#FFFDF9',
-                borderRadius: '16px',
-                border: '1px solid rgba(120, 101, 165, 0.12)',
-                padding: '32px 36px',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+                backgroundColor: 'var(--bg-surface)',
+                borderRadius: 'var(--radius-card)',
+                border: '1px solid var(--border-hairline)',
+                padding: '24px 28px',
+                boxShadow: 'var(--shadow-card)',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '24px'
+                gap: '20px'
               }}
             >
               {/* Header Row */}
@@ -403,7 +464,18 @@ export function ConnectedSystemsPage() {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>External Reachability:</span>
-                    <StatusPill status="neutral" label="Not tested" size="small" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {sys.latencyMs != null && (
+                        <span className="font-mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          {sys.latencyMs}ms
+                        </span>
+                      )}
+                      <StatusPill
+                        status={sys.reachabilityVariant || 'neutral'}
+                        label={sys.reachability || 'Not tested'}
+                        size="small"
+                      />
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -412,6 +484,22 @@ export function ConnectedSystemsPage() {
                       {sys.monitoredAccounts !== undefined ? `${sys.monitoredAccounts} records` : '—'}
                     </span>
                   </div>
+
+                  {sys.healthMessage && (
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5, marginTop: '2px', borderTop: '1px solid var(--border-hairline)', paddingTop: '10px' }}>
+                      {sys.healthMessage}
+                    </div>
+                  )}
+
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    icon={testingKey === sys.key ? Loader : Zap}
+                    disabled={testingKey !== null}
+                    onClick={() => handleTestConnection(sys.key)}
+                  >
+                    {testingKey === sys.key ? 'Testing…' : 'Test Connection'}
+                  </Button>
                 </div>
               </div>
             </div>

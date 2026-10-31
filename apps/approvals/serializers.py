@@ -46,3 +46,4 @@ class ApprovalActionSerializer(serializers.Serializer):
     Serializer for approve/reject action payload inputs.
     """
     comment = serializers.CharField(required=False, allow_blank=True, default='')
+    execute_repair = serializers.BooleanField(required=False, default=True)

@@ -1,24 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, AlertCircle, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { TimelineEntry } from '../components/ui/TimelineEntry';
 import { StatusPill } from '../components/ui/StatusPill';
 import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
+import { PaginationControls } from '../components/ui/PaginationControls';
 
 export function AuditLogsPage() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('TIMELINE');
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState(null);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const fetchIdRef = useRef(0);
 
-  const fetchAuditLogs = async () => {
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q !== null) {
+      setSearchQuery(q);
+    }
+  }, [searchParams]);
+
+  const fetchAuditLogs = useCallback(async (page, search) => {
     setLoading(true);
     setError(null);
+    const fetchId = ++fetchIdRef.current;
     try {
-      const res = await api.getAuditLogs();
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      if (search && search.trim()) params.set('search', search.trim());
+      const res = await api.getAuditLogs(`?${params.toString()}`);
+      if (fetchId !== fetchIdRef.current) return;
       const rawList = res.results || res;
+      const count = res.count != null ? res.count : (Array.isArray(rawList) ? rawList.length : 0);
       if (Array.isArray(rawList)) {
         const formatted = rawList.map((item) => ({
           id: item.id ? `AUD-${String(item.id).substring(0, 8).toUpperCase()}` : (item.correlation_id || 'AUD-0000'),
@@ -31,18 +51,25 @@ export function AuditLogsPage() {
           details: item.action || `Event: ${item.event_type}`
         }));
         setLogs(formatted);
+        setTotalCount(count);
       }
     } catch (err) {
+      if (fetchId !== fetchIdRef.current) return;
       console.warn('API error fetching audit logs:', err);
       setError(err.message || 'Failed to fetch audit logs from backend.');
     } finally {
-      setLoading(false);
+      if (fetchId === fetchIdRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchAuditLogs();
-  }, []);
+    fetchAuditLogs(currentPage, searchQuery);
+  }, [currentPage, searchQuery, fetchAuditLogs]);
+
+  // Server-side filtering: logs are already filtered by the backend
+  const filteredLogs = logs;
 
   const handleVerifyChain = async () => {
     setVerifying(true);
@@ -72,6 +99,7 @@ export function AuditLogsPage() {
     }
   };
 
+
   return (
     <div className="page-content">
       {/* Editorial Header */}
@@ -98,10 +126,10 @@ export function AuditLogsPage() {
           >
             {verifying ? 'Verifying Integrity...' : 'Verify Cryptographic Chain'}
           </Button>
-          <Button variant="secondary" icon={RefreshCw} onClick={fetchAuditLogs} disabled={loading || verifying}>
+          <Button variant="secondary" icon={RefreshCw} onClick={() => fetchAuditLogs(currentPage, searchQuery)} disabled={loading || verifying}>
             Refresh
           </Button>
-          <div style={{ display: 'flex', gap: '6px', backgroundColor: 'var(--bg-base)', padding: '4px', borderRadius: '9999px', border: '1px solid var(--border-hairline)' }}>
+          <div style={{ display: 'flex', gap: '4px', backgroundColor: 'var(--bg-surface)', padding: '3px', borderRadius: 'var(--radius-btn)', border: '1px solid var(--border-hairline)' }}>
             <Button
               variant={activeTab === 'TIMELINE' ? 'primary' : 'ghost'}
               size="small"
@@ -124,14 +152,14 @@ export function AuditLogsPage() {
         verificationResult.error ? (
           <div
             style={{
-              marginBottom: '32px',
-              padding: '16px 22px',
-              borderRadius: '12px',
+              marginBottom: '24px',
+              padding: '14px 18px',
+              borderRadius: 'var(--radius-card)',
               backgroundColor: 'var(--status-critical-bg)',
               border: '1px solid var(--status-critical-border)',
               color: 'var(--status-critical)',
               fontSize: '13px',
-              fontWeight: 600,
+              fontWeight: 500,
               display: 'flex',
               alignItems: 'center',
               gap: '10px'
@@ -143,28 +171,28 @@ export function AuditLogsPage() {
         ) : verificationResult.isValid ? (
           <div
             style={{
-              marginBottom: '32px',
-              padding: '20px 24px',
-              borderRadius: '16px',
-              backgroundColor: '#FFFDF9',
+              marginBottom: '24px',
+              padding: '18px 22px',
+              borderRadius: 'var(--radius-card)',
+              backgroundColor: 'var(--bg-surface)',
               border: '1px solid var(--status-healthy-border)',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+              boxShadow: 'var(--shadow-card)',
               color: 'var(--status-healthy)',
               fontSize: '13px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px'
+              gap: '6px'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 700, fontSize: '15px' }}>
-              <ShieldCheck size={20} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 600, fontSize: '14px' }}>
+              <ShieldCheck size={18} />
               <span>{verificationResult.message}</span>
             </div>
             {verificationResult.details && (
-              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginLeft: '30px' }}>
+              <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginLeft: '28px' }}>
                 Verified {verificationResult.details.verified_records} of {verificationResult.details.total_records} record(s) intact.
                 {verificationResult.details.head_hash && (
-                  <span className="font-mono" style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--accent-primary)' }}>
+                  <span className="font-mono" style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--accent-primary)' }}>
                     (Head SHA-256: {verificationResult.details.head_hash.substring(0, 20)}...)
                   </span>
                 )}
@@ -174,24 +202,24 @@ export function AuditLogsPage() {
         ) : (
           <div
             style={{
-              marginBottom: '32px',
-              padding: '20px 24px',
-              borderRadius: '16px',
+              marginBottom: '24px',
+              padding: '18px 22px',
+              borderRadius: 'var(--radius-card)',
               backgroundColor: 'var(--status-critical-bg)',
               border: '1px solid var(--status-critical-border)',
               color: 'var(--status-critical)',
               fontSize: '13px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px'
+              gap: '6px'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 700, fontSize: '15px' }}>
-              <ShieldAlert size={20} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 600, fontSize: '14px' }}>
+              <ShieldAlert size={18} />
               <span>{verificationResult.message}</span>
             </div>
             {verificationResult.details && (
-              <div style={{ fontSize: '13px', opacity: 0.9, marginLeft: '30px' }}>
+              <div style={{ fontSize: '12.5px', opacity: 0.9, marginLeft: '28px' }}>
                 Reason: {verificationResult.details.reason} (Tampered Record ID: {verificationResult.details.tampered_record_id || 'Unknown'})
               </div>
             )}
@@ -202,9 +230,9 @@ export function AuditLogsPage() {
       {error && (
         <div
           style={{
-            marginBottom: '32px',
-            padding: '16px 22px',
-            borderRadius: '12px',
+            marginBottom: '24px',
+            padding: '14px 18px',
+            borderRadius: 'var(--radius-card)',
             backgroundColor: 'var(--status-critical-bg)',
             border: '1px solid var(--status-critical-border)',
             color: 'var(--status-critical)',
@@ -220,40 +248,40 @@ export function AuditLogsPage() {
       )}
 
       {loading ? (
-        <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+        <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
           Loading cryptographic audit chain...
         </div>
-      ) : logs.length === 0 ? (
+      ) : filteredLogs.length === 0 ? (
         <div
           style={{
-            padding: '60px 24px',
+            padding: '48px 24px',
             textAlign: 'center',
-            backgroundColor: '#FFFDF9',
-            borderRadius: '16px',
-            border: '1px solid rgba(120, 101, 165, 0.12)',
+            backgroundColor: 'var(--bg-surface)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px solid var(--border-hairline)',
             color: 'var(--text-muted)'
           }}
         >
-          No audit log records available.
+          {searchQuery ? `No audit records matching "${searchQuery}".` : 'No audit log records available.'}
         </div>
       ) : activeTab === 'TIMELINE' ? (
         <div
           style={{
-            backgroundColor: '#FFFDF9',
-            borderRadius: '16px',
-            border: '1px solid rgba(120, 101, 165, 0.12)',
-            padding: '40px 48px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)'
+            backgroundColor: 'var(--bg-surface)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px solid var(--border-hairline)',
+            padding: '28px 32px',
+            boxShadow: 'var(--shadow-card)'
           }}
         >
-          {logs.map((log, idx) => (
+          {filteredLogs.map((log, idx) => (
             <TimelineEntry
               key={log.id}
               timestamp={log.timestamp}
               title={`${log.eventType} — ${log.system}`}
               description={`${log.details} (Actor: ${log.actor}, Target: ${log.target})`}
               status={log.status === 'CRITICAL' || log.status === 'FAILURE' ? 'critical' : log.status === 'SUCCESS' ? 'healthy' : 'warning'}
-              isLast={idx === logs.length - 1}
+              isLast={idx === filteredLogs.length - 1}
             />
           ))}
         </div>
@@ -272,7 +300,7 @@ export function AuditLogsPage() {
               </tr>
             </thead>
             <tbody>
-              {logs.map((log) => (
+              {filteredLogs.map((log) => (
                 <tr key={log.id}>
                   <td className="font-mono" style={{ color: 'var(--accent-primary)', fontWeight: 600, fontSize: '13px' }}>
                     {log.id}
@@ -299,6 +327,15 @@ export function AuditLogsPage() {
           </table>
         </div>
       )}
+
+      {/* Server-side Pagination Controls */}
+      <PaginationControls
+        currentPage={currentPage}
+        pageSize={20}
+        totalCount={totalCount}
+        onPageChange={setCurrentPage}
+        loading={loading}
+      />
     </div>
   );
 }

@@ -184,19 +184,19 @@ export function RulesPage() {
       {/* AI Rule Draft Natural Language Prompt Box */}
       <div
         style={{
-          marginBottom: '40px',
-          padding: '28px 32px',
-          borderRadius: '16px',
-          backgroundColor: '#FFFDF9',
-          border: '1px solid rgba(120, 101, 165, 0.16)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+          marginBottom: '28px',
+          padding: '22px 26px',
+          borderRadius: 'var(--radius-card)',
+          backgroundColor: 'var(--bg-surface)',
+          border: '1px solid var(--border-hairline)',
+          boxShadow: 'var(--shadow-card)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px'
+          gap: '14px'
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-primary)', fontWeight: 700, fontSize: '13px', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-primary)', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
             <Sparkles size={16} />
             <span>AI Rule Synthesis</span>
           </div>
@@ -205,7 +205,7 @@ export function RulesPage() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <input
             id="draft-prompt-input"
             type="text"
@@ -214,17 +214,13 @@ export function RulesPage() {
             onKeyDown={(e) => { if (e.key === 'Enter') handleGenerateDraft(); }}
             placeholder="e.g. Terminated employees must not retain active Slack accounts or VPN credentials"
             disabled={draftLoading}
+            className="input-base"
             style={{
               flex: 1,
               minWidth: '280px',
-              padding: '13px 20px',
-              fontSize: '14px',
-              borderRadius: '9999px',
-              border: '1px solid var(--border-hairline)',
-              backgroundColor: 'var(--bg-base)',
-              color: 'var(--text-primary)',
-              outline: 'none',
-              boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.04)'
+              height: '38px',
+              borderRadius: 'var(--radius-input)',
+              backgroundColor: '#F8F5FD'
             }}
           />
           <Button

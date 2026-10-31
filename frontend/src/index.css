@@ -1,55 +1,55 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Design Tokens — Directly aligned with ReconcileOS Landing Page */
-  --bg-base: #F5F0E8;
-  --bg-surface: #FFFDF9;
-  --bg-surface-hover: #F8F4EC;
-  --bg-header: rgba(245, 240, 232, 0.92);
-  --bg-sidebar: #FFFDF9;
+  /* Design Tokens — Enterprise Lavender Admin */
+  --bg-base: #EFE9F8;
+  --bg-surface: #FFFFFF;
+  --bg-surface-hover: #F8F5FD;
+  --bg-header: rgba(255, 255, 255, 0.95);
+  --bg-sidebar: #FFFFFF;
 
-  /* Subtle Hairline Borders */
-  --border-hairline: #DED5C8;
-  --border-hover: #C5B8A3;
-  --border-subtle: rgba(51, 47, 58, 0.08);
+  /* Muted Lavender Borders */
+  --border-hairline: #DCD3EF;
+  --border-hover: #C5B8E3;
+  --border-subtle: rgba(45, 35, 61, 0.08);
 
-  /* Editorial Typography Colors */
-  --text-primary: #332F3A;
-  --text-secondary: #595260;
-  --text-muted: #7E7684;
+  /* Enterprise Typography Colors */
+  --text-primary: #1F192C;
+  --text-secondary: #584F66;
+  --text-muted: #837994;
 
-  /* Signature Warm Lavender / Purple Accent (from Landing Page) */
-  --accent-primary: #7865A5;
-  --accent-primary-hover: #5E4D8B;
-  --accent-primary-light: #EAE4F4;
-  --accent-primary-border: #D3C8E5;
+  /* Signature Lavender / Purple Accent */
+  --accent-primary: #6E48AA;
+  --accent-primary-hover: #563294;
+  --accent-primary-light: #F3EEFA;
+  --accent-primary-border: #DCD3EF;
 
   /* Backward Compatibility Aliases */
   --accent-blue: var(--accent-primary);
-  --accent-blue-glow: rgba(120, 101, 165, 0.15);
+  --accent-blue-glow: rgba(110, 72, 170, 0.15);
   --border-color: var(--border-hairline);
   --text-main: var(--text-primary);
   --bg-card: var(--bg-surface);
   --bg-card-secondary: var(--bg-surface-hover);
   --radius-sm: var(--radius-btn);
-  --shadow-md: 0 4px 16px rgba(51, 47, 58, 0.06);
+  --shadow-md: 0 4px 12px rgba(31, 25, 44, 0.05);
 
-  /* Quiet Semantic Status Colors */
-  --status-critical: #C4453F;
-  --status-critical-bg: #FDF2F1;
-  --status-critical-border: #F0CBC9;
+  /* Meaningful Semantic Status Colors (Coral, Amber, Mint) */
+  --status-critical: #DC2626;
+  --status-critical-bg: #FEF2F2;
+  --status-critical-border: #FECACA;
 
-  --status-warning: #B8792A;
-  --status-warning-bg: #FCF5EB;
-  --status-warning-border: #ECD6B3;
+  --status-warning: #D97706;
+  --status-warning-bg: #FFFBEB;
+  --status-warning-border: #FDE68A;
 
-  --status-healthy: #28906A;
-  --status-healthy-bg: #EDF9F3;
-  --status-healthy-border: #B8E4D2;
+  --status-healthy: #059669;
+  --status-healthy-bg: #ECFDF5;
+  --status-healthy-border: #A7F3D0;
 
-  --status-neutral: #7E7684;
-  --status-neutral-bg: #EDE7DD;
-  --status-neutral-border: #D8D0C3;
+  --status-neutral: #6B7280;
+  --status-neutral-bg: #F3F4F6;
+  --status-neutral-border: #E5E7EB;
 
   /* Legacy Status Aliases */
   --status-danger: var(--status-critical);
@@ -59,29 +59,29 @@
   --status-success-bg: var(--status-healthy-bg);
   --status-success-border: var(--status-healthy-border);
 
-  /* Radii — pill-shaped actions like landing page */
-  --radius-btn: 9999px;
-  --radius-input: 8px;
-  --radius-card: 14px;
+  /* Radii — Crisp enterprise controls, pills reserved strictly for status */
+  --radius-btn: 6px;
+  --radius-input: 6px;
+  --radius-card: 10px;
   --radius-pill: 9999px;
 
-  /* Soft, Subtle Shadows */
-  --shadow-floating: 0 8px 24px rgba(51, 47, 58, 0.06);
-  --shadow-card: 0 2px 8px rgba(51, 47, 58, 0.04);
+  /* Soft, Subtle Enterprise Shadows */
+  --shadow-floating: 0 10px 25px -5px rgba(31, 25, 44, 0.08), 0 8px 10px -6px rgba(31, 25, 44, 0.04);
+  --shadow-card: 0 1px 3px rgba(31, 25, 44, 0.04), 0 1px 2px rgba(31, 25, 44, 0.02);
 
-  /* Spacing Scale — Generous Breathing Room */
+  /* Spacing Scale — Well Proportioned */
   --space-xs: 4px;
   --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 36px;
-  --space-2xl: 52px;
-  --space-3xl: 72px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+  --space-2xl: 24px;
+  --space-3xl: 32px;
 
   /* Layout Dimensions */
-  --sidebar-width: 250px;
-  --header-height: 64px;
-  --content-max-width: 1140px;
+  --sidebar-width: 240px;
+  --header-height: 60px;
+  --content-max-width: 1280px;
 }
 
 * {
@@ -152,47 +152,47 @@ a:hover {
   min-width: 0;
 }
 
-/* Spacious, centered content with intentional margins */
+/* Crisp, balanced content with enterprise margins */
 .page-content {
-  padding: 48px 56px 96px;
+  padding: 28px 36px 64px;
   flex: 1;
   max-width: var(--content-max-width);
   margin: 0;
   width: 100%;
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.25s ease-out;
 }
 
-/* ===== Editorial Page Header (Inspired by Landing Hero) ===== */
+/* ===== Enterprise Page Header ===== */
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: var(--space-2xl);
-  gap: var(--space-xl);
+  margin-bottom: var(--space-xl);
+  gap: var(--space-lg);
 }
 
 .page-header-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
   flex-shrink: 0;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
-/* Eyebrow badge matching Landing Page eyebrow */
+/* Eyebrow badge */
 .page-eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 14px;
+  gap: 6px;
+  padding: 3px 10px;
   border-radius: var(--radius-pill);
   background: var(--accent-primary-light);
   border: 1px solid var(--accent-primary-border);
   color: var(--accent-primary);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .page-eyebrow-dot {
@@ -202,37 +202,37 @@ a:hover {
   background-color: var(--accent-primary);
 }
 
-/* Confident, Large Page Title */
+/* Enterprise Page Title — Proportional, Confident */
 .page-title {
-  font-size: 2.25rem; /* 36px */
-  font-weight: 800;
+  font-size: 1.5rem; /* 24px */
+  font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin-bottom: 4px;
 }
 
 .page-subtitle {
-  font-size: 1.05rem; /* ~17px */
+  font-size: 0.875rem; /* 14px */
   color: var(--text-secondary);
-  line-height: 1.6;
-  max-width: 640px;
+  line-height: 1.5;
+  max-width: 680px;
   font-weight: 400;
 }
 
-/* ===== Editorial Horizontal Metric Summary (NOT separate floating cards!) ===== */
+/* ===== Enterprise Metric Summary Strip ===== */
 .metric-summary-strip {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   border-top: 1px solid var(--border-hairline);
   border-bottom: 1px solid var(--border-hairline);
-  padding: 32px 0;
-  margin-bottom: 48px;
+  padding: 20px 0;
+  margin-bottom: 28px;
   background: transparent;
 }
 
 .metric-summary-item {
-  padding: 0 32px;
+  padding: 0 24px;
   border-right: 1px solid var(--border-hairline);
 }
 
@@ -246,61 +246,61 @@ a:hover {
 }
 
 .metric-summary-label {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .metric-summary-value {
-  font-size: 2.75rem; /* 44px */
-  font-weight: 800;
+  font-size: 1.75rem; /* 28px */
+  font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  margin-bottom: 6px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
 }
 
 .metric-summary-subtext {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--text-secondary);
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
 /* ===== Section Headings ===== */
 .section-header {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
 }
 
 .section-title {
-  font-size: 1.25rem; /* 20px */
-  font-weight: 700;
+  font-size: 1.125rem; /* 18px */
+  font-weight: 600;
   color: var(--text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .section-desc {
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--text-muted);
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .section-divider {
   height: 1px;
   background: var(--border-hairline);
-  margin: var(--space-2xl) 0;
+  margin: var(--space-xl) 0;
   border: none;
 }
 
-/* ===== Open Tables (Spacious & Editorial) ===== */
+/* ===== Enterprise Data Tables ===== */
 .editorial-table-container {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-hairline);
@@ -313,16 +313,16 @@ a:hover {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .editorial-table thead tr {
-  background-color: var(--bg-base);
+  background-color: #F8F5FD;
   border-bottom: 1px solid var(--border-hairline);
 }
 
 .editorial-table th {
-  padding: 14px 20px;
+  padding: 10px 16px;
   font-weight: 600;
   color: var(--text-muted);
   font-size: 11px;
@@ -332,7 +332,7 @@ a:hover {
 
 .editorial-table tbody tr {
   border-bottom: 1px solid var(--border-hairline);
-  transition: background-color 0.15s ease;
+  transition: background-color 0.12s ease;
 }
 
 .editorial-table tbody tr:last-child {
@@ -344,7 +344,7 @@ a:hover {
 }
 
 .editorial-table td {
-  padding: 16px 20px;
+  padding: 12px 16px;
   color: var(--text-secondary);
 }
 
@@ -361,9 +361,9 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 24px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--border-hairline);
-  transition: background-color 0.15s ease;
+  transition: background-color 0.12s ease;
 }
 
 .plain-divided-row:last-child {
@@ -374,14 +374,14 @@ a:hover {
   background-color: var(--bg-surface-hover);
 }
 
-/* ===== Card Base — Quiet & Restrained ===== */
+/* ===== Card Base — Enterprise Restrained ===== */
 .card {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius-card);
-  padding: 28px;
+  padding: 20px 24px;
   box-shadow: var(--shadow-card);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .card:hover {
@@ -445,6 +445,9 @@ a:hover {
     border-right: none;
     padding: 0;
   }
+  .grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
   .grid-2 {
     grid-template-columns: 1fr;
   }
@@ -462,6 +465,9 @@ a:hover {
     align-items: flex-start;
   }
   .metric-summary-strip {
+    grid-template-columns: 1fr;
+  }
+  .grid-4 {
     grid-template-columns: 1fr;
   }
 }

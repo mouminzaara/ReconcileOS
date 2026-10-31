@@ -1,16 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Filter, RefreshCw, Plus, Edit2, Eye, UserX, X, Check, AlertCircle } from 'lucide-react';
 import { StatusPill } from '../components/ui/StatusPill';
 import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
+import { PaginationControls } from '../components/ui/PaginationControls';
 
 export function EmployeesPage() {
+  const [searchParams] = useSearchParams();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [toastMessage, setToastMessage] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const fetchIdRef = useRef(0);
+
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q !== null) {
+      setSearchQuery(q);
+    }
+  }, [searchParams]);
 
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -30,12 +43,20 @@ export function EmployeesPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const loadEmployees = async () => {
+  const loadEmployees = useCallback(async (page, search, status) => {
     setLoading(true);
     setError(null);
+    const fetchId = ++fetchIdRef.current;
     try {
-      const res = await api.getEmployees();
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      if (search && search.trim()) params.set('search', search.trim());
+      if (status && status !== 'ALL') params.set('status', status);
+      const res = await api.getEmployees(`?${params.toString()}`);
+      // Discard stale responses
+      if (fetchId !== fetchIdRef.current) return;
       const list = res.results || res;
+      const count = res.count != null ? res.count : (Array.isArray(list) ? list.length : 0);
       if (Array.isArray(list)) {
         const formatted = list.map(emp => ({
           id: emp.id,
@@ -44,24 +65,42 @@ export function EmployeesPage() {
           department: emp.department,
           status: emp.status,
           createdAt: emp.created_at ? emp.created_at.split('T')[0] : '2026-08-28',
-          systemsConnected: emp.systems_connected || ["HR", "VPN", "GitHub", "Cloud", "Slack"]
+          systemsConnected: emp.systems_connected || ['HR'],
+          connectedSystems: emp.connected_systems || []
         }));
         setEmployees(formatted);
+        setTotalCount(count);
       } else {
         setEmployees([]);
+        setTotalCount(0);
       }
     } catch (err) {
+      if (fetchId !== fetchIdRef.current) return;
       console.error('API error loading employees:', err);
       setError(err.message || 'Failed to load employees from HR directory.');
       setEmployees([]);
+      setTotalCount(0);
     } finally {
-      setLoading(false);
+      if (fetchId === fetchIdRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadEmployees();
-  }, []);
+    loadEmployees(currentPage, searchQuery, statusFilter);
+  }, [currentPage, searchQuery, statusFilter, loadEmployees]);
+
+  // Reset to page 1 when search or filter changes
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  const handleStatusFilterChange = (value) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
 
   const handleOpenAddModal = () => {
     setFormData({ full_name: '', email: '', department: '', status: 'ACTIVE' });
@@ -121,7 +160,7 @@ export function EmployeesPage() {
       });
       showToast(`Employee "${formData.full_name}" created successfully.`);
       setShowAddModal(false);
-      await loadEmployees();
+      await loadEmployees(currentPage, searchQuery, statusFilter);
     } catch (err) {
       setFormError(err.message || 'Failed to create employee');
     } finally {
@@ -143,7 +182,7 @@ export function EmployeesPage() {
       });
       showToast(`Employee "${formData.full_name}" updated successfully.`);
       setShowEditModal(false);
-      await loadEmployees();
+      await loadEmployees(currentPage, searchQuery, statusFilter);
     } catch (err) {
       setFormError(err.message || 'Failed to update employee');
     } finally {
@@ -160,7 +199,7 @@ export function EmployeesPage() {
       await api.terminateEmployee(selectedEmployee.id, terminateReason);
       showToast(`Employee "${selectedEmployee.fullName}" terminated successfully.`);
       setShowTerminateModal(false);
-      await loadEmployees();
+      await loadEmployees(currentPage, searchQuery, statusFilter);
     } catch (err) {
       setFormError(err.message || 'Failed to terminate employee');
     } finally {
@@ -168,16 +207,8 @@ export function EmployeesPage() {
     }
   };
 
-  const filteredEmployees = employees.filter((emp) => {
-    const matchesSearch =
-      (emp.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (emp.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (emp.department || '').toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'ALL' || emp.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
-  });
+  // Server-side filtering: employees are already filtered by the backend
+  const filteredEmployees = employees;
 
   return (
     <div className="page-content">
@@ -219,7 +250,7 @@ export function EmployeesPage() {
           </p>
         </div>
         <div className="page-header-actions">
-          <Button variant="secondary" icon={RefreshCw} onClick={loadEmployees} disabled={loading}>
+          <Button variant="secondary" icon={RefreshCw} onClick={() => loadEmployees(currentPage, searchQuery, statusFilter)} disabled={loading}>
             Refresh
           </Button>
           <Button variant="primary" icon={Plus} onClick={handleOpenAddModal}>
@@ -249,7 +280,7 @@ export function EmployeesPage() {
             <AlertCircle size={18} />
             <span>{error}</span>
           </div>
-          <Button variant="secondary" size="small" icon={RefreshCw} onClick={loadEmployees} disabled={loading}>
+          <Button variant="secondary" size="small" icon={RefreshCw} onClick={() => loadEmployees(currentPage, searchQuery, statusFilter)} disabled={loading}>
             Retry
           </Button>
         </div>
@@ -262,10 +293,10 @@ export function EmployeesPage() {
           <input
             type="text"
             className="input-base"
-            style={{ width: '100%', paddingLeft: '44px', height: '42px', borderRadius: '9999px' }}
+            style={{ width: '100%', paddingLeft: '40px', height: '38px', borderRadius: 'var(--radius-input)' }}
             placeholder="Search name, email, department..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
         </div>
 
@@ -275,23 +306,23 @@ export function EmployeesPage() {
           <Button
             variant={statusFilter === 'ALL' ? 'primary' : 'secondary'}
             size="small"
-            onClick={() => setStatusFilter('ALL')}
+            onClick={() => handleStatusFilterChange('ALL')}
           >
-            All ({employees.length})
+            All ({totalCount})
           </Button>
           <Button
             variant={statusFilter === 'ACTIVE' ? 'primary' : 'secondary'}
             size="small"
-            onClick={() => setStatusFilter('ACTIVE')}
+            onClick={() => handleStatusFilterChange('ACTIVE')}
           >
-            Active ({employees.filter(e => e.status === 'ACTIVE').length})
+            Active
           </Button>
           <Button
             variant={statusFilter === 'TERMINATED' ? 'primary' : 'secondary'}
             size="small"
-            onClick={() => setStatusFilter('TERMINATED')}
+            onClick={() => handleStatusFilterChange('TERMINATED')}
           >
-            Terminated ({employees.filter(e => e.status === 'TERMINATED').length})
+            Terminated
           </Button>
         </div>
       </div>
@@ -361,6 +392,15 @@ export function EmployeesPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Server-side Pagination Controls */}
+      <PaginationControls
+        currentPage={currentPage}
+        pageSize={20}
+        totalCount={totalCount}
+        onPageChange={setCurrentPage}
+        loading={loading}
+      />
 
       {/* --- ADD EMPLOYEE MODAL --- */}
       {showAddModal && (
@@ -510,11 +550,27 @@ export function EmployeesPage() {
                   Monitored Connectors
                 </div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {(selectedEmployee.systemsConnected || ["HR", "VPN", "GitHub", "Cloud", "Slack"]).map(sys => (
-                    <span key={sys} style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: 'var(--radius-pill)', backgroundColor: 'var(--accent-primary-light)', color: 'var(--accent-primary)' }}>
-                      {sys}
-                    </span>
-                  ))}
+                  {(selectedEmployee.connectedSystems && selectedEmployee.connectedSystems.length > 0
+                    ? selectedEmployee.connectedSystems
+                    : (selectedEmployee.systemsConnected || ['HR']).map(s => ({ system: s, state: 'UNKNOWN' }))
+                  ).map(sys => {
+                    const sysObj = typeof sys === 'string' ? { system: sys, state: 'UNKNOWN' } : sys;
+                    const stateColor = sysObj.state === 'CONNECTED'
+                      ? 'var(--status-healthy)'
+                      : sysObj.state === 'DISCONNECTED' || sysObj.state === 'TERMINATED'
+                        ? 'var(--status-critical)'
+                        : 'var(--accent-primary)';
+                    const stateBg = sysObj.state === 'CONNECTED'
+                      ? 'var(--status-healthy-bg)'
+                      : sysObj.state === 'DISCONNECTED' || sysObj.state === 'TERMINATED'
+                        ? 'var(--status-critical-bg)'
+                        : 'var(--accent-primary-light)';
+                    return (
+                      <span key={sysObj.system || sysObj.key} style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: 'var(--radius-pill)', backgroundColor: stateBg, color: stateColor }}>
+                        {sysObj.system || sysObj.key} · {sysObj.state}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 

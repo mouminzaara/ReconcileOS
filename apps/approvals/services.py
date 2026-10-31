@@ -65,9 +65,16 @@ class ApprovalService:
         return request
 
     @staticmethod
-    def approve_request(approval_request: ApprovalRequest, decided_by=None, comment: str = '', correlation_id: Optional[str] = None) -> ApprovalRequest:
+    def approve_request(
+        approval_request: ApprovalRequest,
+        decided_by=None,
+        comment: str = '',
+        correlation_id: Optional[str] = None,
+        execute_repair: bool = False
+    ) -> ApprovalRequest:
         """
         Approves a PENDING approval request and synchronizes the associated RepairPlan status to APPROVED.
+        If execute_repair is True, executes the repair plan immediately via RepairExecutor and PostRepairVerifier.
 
         Raises ValidationError if invalid transition is attempted.
         """
@@ -97,7 +104,7 @@ class ApprovalService:
             approval_request.comment = comment
         approval_request.save(update_fields=['decision', 'decided_by', 'decided_at', 'comment', 'updated_at'])
 
-        # Update associated RepairPlan status -> APPROVED (Eligible for execution, but NOT executed yet)
+        # Update associated RepairPlan status -> APPROVED (Eligible for execution)
         repair_plan.status = PlanStatus.APPROVED
         repair_plan.save(update_fields=['status', 'updated_at'])
 
@@ -122,8 +129,20 @@ class ApprovalService:
 
         logger.info(
             f"Approved request {approval_request.id} for plan {repair_plan.id}. "
-            f"Plan status updated to APPROVED (eligible for execution)."
+            f"Plan status updated to APPROVED."
         )
+
+        if execute_repair:
+            from apps.workflows.executor import RepairExecutor
+            executor = RepairExecutor()
+            try:
+                executor.execute_plan(repair_plan, executed_by=decided_by, correlation_id=correlation_id)
+            except Exception as exc:
+                logger.error(f"Error executing repair plan {repair_plan.id} upon approval: {exc}")
+                raise ValidationError(f"Repair plan approved, but execution failed: {exc}")
+
+            approval_request.refresh_from_db()
+
         return approval_request
 
     @staticmethod

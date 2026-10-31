@@ -29,27 +29,27 @@ export function ApprovalCard({
   return (
     <div
       style={{
-        backgroundColor: '#FFFDF9',
-        borderRadius: '16px',
-        border: '1px solid rgba(120, 101, 165, 0.12)',
-        padding: '32px 36px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+        backgroundColor: 'var(--bg-surface)',
+        borderRadius: 'var(--radius-card)',
+        border: '1px solid var(--border-hairline)',
+        padding: '24px 28px',
+        boxShadow: 'var(--shadow-card)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '20px'
+        gap: '18px'
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
               {employeeName}
             </h3>
             <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
               ({employeeEmail})
             </span>
           </div>
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+          <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginTop: '4px' }}>
             Downstream Target: <strong style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>{targetSystem}</strong>
           </div>
         </div>
@@ -58,9 +58,9 @@ export function ApprovalCard({
 
       <div
         style={{
-          padding: '18px 22px',
-          borderRadius: '12px',
-          backgroundColor: 'var(--bg-base)',
+          padding: '16px 20px',
+          borderRadius: 'var(--radius-card)',
+          backgroundColor: '#F8F5FD',
           border: '1px solid var(--border-hairline)'
         }}
       >

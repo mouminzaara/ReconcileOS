@@ -20,7 +20,7 @@ from apps.reconciliation.models import IntegrityViolation, ViolationStatus
 from apps.reconciliation.engine import ReconciliationEngine
 from apps.workflows.models import RepairPlan, PlanStatus, RepairExecutionLog, ExecutionStatus
 from apps.workflows.planner import RepairPlanner
-from apps.workflows.executor import RepairExecutor, IneligiblePlanExecutionException
+from apps.workflows.executor import RepairExecutor, IneligiblePlanExecutionException, _execute_with_db_lock_retry
 from apps.approvals.models import ApprovalRequest, ApprovalDecision
 from apps.approvals.services import ApprovalService
 
@@ -92,7 +92,7 @@ class RepairExecutionConcurrencyTestCase(TransactionTestCase):
                 # Synchronize threads so they hit execute_plan simultaneously
                 barrier.wait(timeout=5)
                 # Re-fetch instance to simulate independent web request handling
-                plan = RepairPlan.objects.get(id=self.plan.id)
+                plan = _execute_with_db_lock_retry(lambda: RepairPlan.objects.get(id=self.plan.id))
                 log = executor.execute_plan(plan, executed_by=self.admin_user)
                 results.append((worker_id, log))
             except IneligiblePlanExecutionException as exc:

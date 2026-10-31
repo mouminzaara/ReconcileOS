@@ -1,22 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Filter, ExternalLink, RefreshCw, AlertCircle } from 'lucide-react';
 import { StatusPill } from '../components/ui/StatusPill';
 import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
-import { Link } from 'react-router-dom';
+import { PaginationControls } from '../components/ui/PaginationControls';
+import { Link, useSearchParams } from 'react-router-dom';
 
 export function ViolationsPage() {
+  const [searchParams] = useSearchParams();
   const [violations, setViolations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [severityFilter, setSeverityFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const fetchIdRef = useRef(0);
 
-  const loadViolations = async () => {
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q !== null) {
+      setSearchQuery(q);
+    }
+  }, [searchParams]);
+
+  const loadViolations = useCallback(async (page, search, severity) => {
     setLoading(true);
     setError(null);
+    const fetchId = ++fetchIdRef.current;
     try {
-      const res = await api.getViolations();
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      if (search && search.trim()) params.set('search', search.trim());
+      if (severity && severity !== 'ALL') params.set('severity', severity);
+      const res = await api.getViolations(`?${params.toString()}`);
+      if (fetchId !== fetchIdRef.current) return;
       const list = res.results || res;
+      const count = res.count != null ? res.count : (Array.isArray(list) ? list.length : 0);
       if (Array.isArray(list)) {
         const formatted = list.map(v => ({
           id: `VIO-${(v.id || '').substring(0, 8).toUpperCase()}`,
@@ -33,25 +53,36 @@ export function ViolationsPage() {
           detectedAt: v.detected_at ? new Date(v.detected_at).toLocaleString() : 'Just now'
         }));
         setViolations(formatted);
+        setTotalCount(count);
       } else {
         setViolations([]);
+        setTotalCount(0);
       }
     } catch (err) {
+      if (fetchId !== fetchIdRef.current) return;
       console.error('API error loading violations:', err);
       setError(err.message || 'Failed to load violations from backend.');
       setViolations([]);
+      setTotalCount(0);
     } finally {
-      setLoading(false);
+      if (fetchId === fetchIdRef.current) {
+        setLoading(false);
+      }
     }
-  };
-
-  useEffect(() => {
-    loadViolations();
   }, []);
 
-  const filteredViolations = violations.filter(v =>
-    severityFilter === 'ALL' || v.severity === severityFilter
-  );
+  useEffect(() => {
+    loadViolations(currentPage, searchQuery, severityFilter);
+  }, [currentPage, searchQuery, severityFilter, loadViolations]);
+
+
+  const handleSeverityFilterChange = (value) => {
+    setSeverityFilter(value);
+    setCurrentPage(1);
+  };
+
+  // Server-side filtering: violations are already filtered by the backend
+  const filteredViolations = violations;
 
   return (
     <div className="page-content">
@@ -67,7 +98,7 @@ export function ViolationsPage() {
           </p>
         </div>
         <div className="page-header-actions">
-          <Button variant="secondary" icon={RefreshCw} onClick={loadViolations} disabled={loading}>
+          <Button variant="secondary" icon={RefreshCw} onClick={() => loadViolations(currentPage, searchQuery, severityFilter)} disabled={loading}>
             Refresh
           </Button>
         </div>
@@ -101,30 +132,30 @@ export function ViolationsPage() {
         <Button
           variant={severityFilter === 'ALL' ? 'primary' : 'secondary'}
           size="small"
-          onClick={() => setSeverityFilter('ALL')}
+          onClick={() => handleSeverityFilterChange('ALL')}
         >
-          All ({violations.length})
+          All ({totalCount})
         </Button>
         <Button
           variant={severityFilter === 'CRITICAL' ? 'danger' : 'secondary'}
           size="small"
-          onClick={() => setSeverityFilter('CRITICAL')}
+          onClick={() => handleSeverityFilterChange('CRITICAL')}
         >
-          Critical ({violations.filter(v => v.severity === 'CRITICAL').length})
+          Critical
         </Button>
         <Button
           variant={severityFilter === 'HIGH' ? 'primary' : 'secondary'}
           size="small"
-          onClick={() => setSeverityFilter('HIGH')}
+          onClick={() => handleSeverityFilterChange('HIGH')}
         >
-          High ({violations.filter(v => v.severity === 'HIGH').length})
+          High
         </Button>
         <Button
           variant={severityFilter === 'MEDIUM' ? 'secondary' : 'secondary'}
           size="small"
-          onClick={() => setSeverityFilter('MEDIUM')}
+          onClick={() => handleSeverityFilterChange('MEDIUM')}
         >
-          Medium ({violations.filter(v => v.severity === 'MEDIUM').length})
+          Medium
         </Button>
       </div>
 
@@ -162,13 +193,13 @@ export function ViolationsPage() {
                   <div className="font-mono" style={{ color: 'var(--text-primary)', fontSize: '11px', fontWeight: 600 }}>{vio.ruleId}</div>
                   <div style={{ marginTop: '2px' }}>{vio.ruleName}</div>
                 </td>
-                <td style={{ padding: '14px 18px' }}>
-                  <span className="font-mono" style={{ color: 'var(--status-healthy)', fontWeight: 600, fontSize: '12px' }}>
+                <td style={{ padding: '12px 16px' }}>
+                  <span className="font-mono" style={{ color: 'var(--status-healthy)', backgroundColor: 'var(--status-healthy-bg)', border: '1px solid var(--status-healthy-border)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>
                     {vio.expectedState}
                   </span>
                 </td>
-                <td style={{ padding: '14px 18px' }}>
-                  <span className="font-mono" style={{ color: 'var(--status-critical)', fontWeight: 600, fontSize: '12px' }}>
+                <td style={{ padding: '12px 16px' }}>
+                  <span className="font-mono" style={{ color: 'var(--status-critical)', backgroundColor: 'var(--status-critical-bg)', border: '1px solid var(--status-critical-border)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>
                     {vio.actualState}
                   </span>
                 </td>
@@ -197,6 +228,15 @@ export function ViolationsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Server-side Pagination Controls */}
+      <PaginationControls
+        currentPage={currentPage}
+        pageSize={20}
+        totalCount={totalCount}
+        onPageChange={setCurrentPage}
+        loading={loading}
+      />
     </div>
   );
 }

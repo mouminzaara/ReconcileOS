@@ -6,7 +6,11 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
 
 export function getStoredToken() {
-  return localStorage.getItem('reconcileos_access_token');
+  const token = localStorage.getItem('reconcileos_access_token');
+  if (!token || token === 'undefined' || token === 'null' || !token.trim()) {
+    return null;
+  }
+  return token.trim();
 }
 
 export function setStoredTokens(access, refresh) {
@@ -90,7 +94,7 @@ export const api = {
   getHealth: () => fetchJson('/health/'),
 
   // Employees API
-  getEmployees: () => fetchJson('/employees/'),
+  getEmployees: (params = '') => fetchJson(`/employees/${params}`),
   getEmployeeDetail: (id) => fetchJson(`/employees/${id}/`),
   createEmployee: (data) =>
     fetchJson('/employees/', {
@@ -115,6 +119,9 @@ export const api = {
   // Connected Systems & Multi-System State
   getCollectedStates: () => fetchJson('/reconciliation/state/'),
   getEmployeeState: (id) => fetchJson(`/reconciliation/state/${id}/`),
+  getConnectorsHealth: () => fetchJson('/connectors/health/'),
+  checkConnectorHealth: (systemKey, params = '') => fetchJson(`/connectors/${systemKey}/health/${params}`),
+  pingConnector: (systemKey) => fetchJson(`/connectors/${systemKey}/ping/`, { method: 'POST' }),
 
   // Invariant Rules
   getRules: () => fetchJson('/rules/'),
@@ -142,7 +149,7 @@ export const api = {
     }),
 
   // Repair Plans & Execution Engine
-  getRepairPlans: () => fetchJson('/workflows/plans/'),
+  getRepairPlans: (params = '') => fetchJson(`/workflows/plans/${params}`),
   generateRepairPlans: (employeeId = null) =>
     fetchJson('/workflows/plans/generate/', {
       method: 'POST',
@@ -172,7 +179,7 @@ export const api = {
     }),
 
   // Audit Logs Engine
-  getAuditLogs: () => fetchJson('/audit/logs/'),
+  getAuditLogs: (params = '') => fetchJson(`/audit/logs/${params}`),
   verifyAuditChain: () => fetchJson('/audit/logs/verify_chain/'),
 };
 

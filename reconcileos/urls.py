@@ -46,6 +46,7 @@ urlpatterns = [
     # Modular API Routers
     path('api/v1/employees/', include('apps.employees.urls')),
     path('api/v1/vpn/', include('apps.connectors.urls')),
+    path('api/v1/connectors/', include('apps.connectors.urls')),
     path('api/v1/rules/', include('apps.rules.urls')),
     path('api/v1/reconciliation/', include('apps.reconciliation.urls')),
     path('api/v1/workflows/', include('apps.workflows.urls')),

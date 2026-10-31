@@ -115,11 +115,22 @@ class AuditLogModelTestCase(TestCase):
         self.assertEqual(details_tamper["tampered_record_id"], str(log2.id))
 
 
+from apps.accounts.models import UserProfile, UserRole
+
+
 class AuditLogAPITestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.user = User.objects.create_user(username='admin_audit', password='password123')
-        self.client.force_authenticate(user=self.user)
+
+        # Users with distinct RBAC roles
+        self.admin_user = User.objects.create_user(username='admin_audit', password='password123')
+        UserProfile.objects.create(user=self.admin_user, role=UserRole.ADMIN)
+
+        self.operator_user = User.objects.create_user(username='operator_audit', password='password123')
+        UserProfile.objects.create(user=self.operator_user, role=UserRole.OPERATOR)
+
+        self.viewer_user = User.objects.create_user(username='viewer_audit', password='password123')
+        UserProfile.objects.create(user=self.viewer_user, role=UserRole.VIEWER)
 
         self.employee = Employee.objects.create(
             full_name="Bob Jones",
@@ -135,19 +146,48 @@ class AuditLogAPITestCase(TestCase):
             result="COMPLIANT"
         )
 
-    def test_get_audit_logs_list(self):
-        response = self.client.get('/api/v1/audit/logs/')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['count'], 1)
-        self.assertEqual(response.data['results'][0]['event_type'], AuditEventType.RULE_EVALUATED)
+    def test_unauthenticated_access_denied(self):
+        """Unauthenticated requests to audit logs must be rejected with 401."""
+        self.client.logout()
+        res_list = self.client.get('/api/v1/audit/logs/')
+        self.assertEqual(res_list.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_verify_chain_api_endpoint(self):
-        response = self.client.get('/api/v1/audit/logs/verify_chain/')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data['is_valid'])
-        self.assertIn("verified", response.data['message'].lower())
+        res_verify = self.client.get('/api/v1/audit/logs/verify_chain/')
+        self.assertEqual(res_verify.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_viewer_access_permissions(self):
+        """VIEWER can read audit logs list, but is denied verify_chain (403)."""
+        self.client.force_authenticate(user=self.viewer_user)
+        res_list = self.client.get('/api/v1/audit/logs/')
+        self.assertEqual(res_list.status_code, status.HTTP_200_OK)
+
+        res_verify = self.client.get('/api/v1/audit/logs/verify_chain/')
+        self.assertEqual(res_verify.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_operator_access_permissions(self):
+        """OPERATOR can read audit logs list, but is denied verify_chain (403)."""
+        self.client.force_authenticate(user=self.operator_user)
+        res_list = self.client.get('/api/v1/audit/logs/')
+        self.assertEqual(res_list.status_code, status.HTTP_200_OK)
+
+        res_verify = self.client.get('/api/v1/audit/logs/verify_chain/')
+        self.assertEqual(res_verify.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_access_permissions(self):
+        """ADMIN can read audit logs list and execute verify_chain (200)."""
+        self.client.force_authenticate(user=self.admin_user)
+        res_list = self.client.get('/api/v1/audit/logs/')
+        self.assertEqual(res_list.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_list.data['count'], 1)
+
+        res_verify = self.client.get('/api/v1/audit/logs/verify_chain/')
+        self.assertEqual(res_verify.status_code, status.HTTP_200_OK)
+        self.assertTrue(res_verify.data['is_valid'])
+        self.assertIn("verified", res_verify.data['message'].lower())
 
     def test_disallow_post_put_delete_api(self):
+        """Audit log modification via POST/PUT/DELETE is strictly prohibited (405)."""
+        self.client.force_authenticate(user=self.admin_user)
         post_resp = self.client.post('/api/v1/audit/logs/', {'event_type': 'test'})
         self.assertEqual(post_resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 

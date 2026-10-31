@@ -72,17 +72,20 @@ class ApprovalRequestViewSet(viewsets.ReadOnlyModelViewSet):
         comment = action_serializer.validated_data.get('comment', '')
 
         decided_by = request.user if request.user.is_authenticated else None
+        execute_repair = action_serializer.validated_data.get('execute_repair', True)
 
         try:
             updated_request = ApprovalService.approve_request(
                 approval_request=approval_request,
                 decided_by=decided_by,
-                comment=comment
+                comment=comment,
+                execute_repair=execute_repair
             )
             serializer = self.get_serializer(updated_request)
+            plan_status = updated_request.repair_plan.status
             return Response({
                 "status": "success",
-                "message": f"Approval request {approval_request.id} APPROVED. Repair plan status is now APPROVED.",
+                "message": f"Approval request {approval_request.id} APPROVED. Repair plan status is now {plan_status}.",
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
         except ValidationError as exc:

@@ -67,8 +67,11 @@ export function LandingPage() {
 
         {/* Headline */}
         <h1 className="landing-headline">
-          Access that stays revoked.<br />
-          Automatically.
+          <span className="landing-headline-line line-1">Access that stays revoked.</span>
+          <br />
+          <span className="landing-headline-line line-2">
+            <span className="landing-headline-emphasis">Automatically.</span>
+          </span>
         </h1>
 
         {/* Subtitle */}
@@ -78,8 +81,8 @@ export function LandingPage() {
 
         {/* Hero Actions */}
         <div className="landing-hero-actions">
-          <button onClick={handleSignInClick} className="landing-cta-btn" style={{ padding: '12px 28px', fontSize: '0.95rem' }}>
-            {user ? 'Enter Control Center' : 'Sign in to Dashboard'} <ArrowRight size={18} />
+          <button onClick={handleSignInClick} className="landing-cta-btn landing-hero-cta">
+            {user ? 'Enter Control Center' : 'Sign in to Dashboard'} <ArrowRight size={17} />
           </button>
           <a href="#how-it-works" className="landing-secondary-btn">
             Explore Architecture
